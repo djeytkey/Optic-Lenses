@@ -32,6 +32,8 @@ if ( is_readable( $wc_optic_autoload ) ) {
 }
 
 require_once WC_OPTIC_PLUGIN_DIR . 'includes/class-wc-optic-autoload.php';
+// Activation runs before plugins_loaded; autoloader is not registered yet.
+require_once WC_OPTIC_PLUGIN_DIR . 'includes/class-wc-optic-database.php';
 
 register_activation_hook( __FILE__, array( 'WC_Optic_Database', 'activate' ) );
 
