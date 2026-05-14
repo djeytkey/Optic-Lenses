@@ -1,0 +1,47 @@
+/**
+ * Optic product — storefront.
+ */
+
+.wc-optic-cart-form .wc-optic-fieldset {
+	border: 0;
+	padding: 0;
+	margin: 0 0 1em;
+}
+
+.wc-optic-eyes--stack {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1.5rem;
+}
+
+/* RTL: OD column first in reading order (DOM is OS then OD) */
+.rtl .wc-optic-eyes--stack {
+	flex-direction: row-reverse;
+}
+
+.wc-optic-eye {
+	min-width: 12rem;
+}
+
+.wc-optic-eye-title {
+	display: block;
+	font-weight: 600;
+	margin-bottom: 0.5rem;
+}
+
+.wc-optic-ltr {
+	unicode-bidi: embed;
+}
+
+.wc-optic-power label {
+	display: inline-block;
+	min-width: 3.5rem;
+}
+
+.wc-optic-toggle {
+	margin: 0.75em 0;
+}
+
+.wc-optic-notice {
+	color: #b32d2e;
+}
