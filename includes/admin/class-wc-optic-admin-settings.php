@@ -43,12 +43,13 @@ class WC_Optic_Admin_Settings {
 		if ( 'woocommerce_page_wc-optic-settings' !== $hook ) {
 			return;
 		}
+		wp_enqueue_style( 'dashicons' );
 		wp_enqueue_script( 'selectWoo' );
 		wp_enqueue_style( 'woocommerce_admin_styles' );
 		wp_enqueue_script(
 			'wc-optic-admin-settings',
 			WC_OPTIC_PLUGIN_URL . 'assets/js/admin-settings.js',
-			array( 'jquery', 'wp-util' ),
+			array( 'jquery' ),
 			WC_OPTIC_VERSION,
 			true
 		);
@@ -59,12 +60,10 @@ class WC_Optic_Admin_Settings {
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce'   => wp_create_nonce( 'wc_optic_admin' ),
 				'i18n'    => array(
-					'name'   => __( 'Name', 'wc-optic' ),
-					'slug'   => __( 'Slug', 'wc-optic' ),
-					'skuFrag'=> __( 'SKU fragment', 'wc-optic' ),
-					'add'    => __( 'Add row', 'wc-optic' ),
-					'save'   => __( 'Save', 'wc-optic' ),
-					'delete' => __( 'Delete', 'wc-optic' ),
+					'confirmDelete'        => __( 'Are you sure you want to delete this catalog entry? This cannot be undone.', 'wc-optic' ),
+					'deleteFailed'         => __( 'Could not delete the entry.', 'wc-optic' ),
+					'affectedNoticeTitle'  => __( 'These products still reference the deleted catalog value. Update their optic configuration (SKU components) where needed:', 'wc-optic' ),
+					'affectedNone'         => __( 'No products were using this value.', 'wc-optic' ),
 				),
 			)
 		);
@@ -84,12 +83,18 @@ class WC_Optic_Admin_Settings {
 			return;
 		}
 
-		$active = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'section'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( ! WC_Optic_Catalog::is_valid_type( $active ) ) {
+		$requested = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'section'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( 'deletion_log' === $requested ) {
+			$active = 'deletion_log';
+		} elseif ( WC_Optic_Catalog::is_valid_type( $requested ) ) {
+			$active = $requested;
+		} else {
 			$active = 'section';
 		}
 
-		self::handle_post_save( $active );
+		if ( 'deletion_log' !== $active ) {
+			self::handle_post_save( $active );
+		}
 
 		echo '<div class="wrap woocommerce" id="wc-optic-settings-root" data-active-tab="' . esc_attr( $active ) . '">';
 		echo '<h1>' . esc_html__( 'Optic Settings', 'wc-optic' ) . '</h1>';
@@ -97,21 +102,32 @@ class WC_Optic_Admin_Settings {
 		foreach ( WC_Optic_Catalog::TYPES as $type ) {
 			$url   = admin_url( 'admin.php?page=wc-optic-settings&tab=' . $type );
 			$class = $active === $type ? 'nav-tab nav-tab-active' : 'nav-tab';
-			/* translators: %s: settings section name */
 			echo '<a class="' . esc_attr( $class ) . '" href="' . esc_url( $url ) . '">' . esc_html( self::tab_label( $type ) ) . '</a>';
 		}
-		$import_url = admin_url( 'admin.php?page=wc-optic-import' );
+		$log_url = admin_url( 'admin.php?page=wc-optic-settings&tab=deletion_log' );
+		$log_cls = 'deletion_log' === $active ? 'nav-tab nav-tab-active' : 'nav-tab';
+		echo '<a class="' . esc_attr( $log_cls ) . '" href="' . esc_url( $log_url ) . '">' . esc_html__( 'Deletion log', 'wc-optic' ) . '</a>';
+		$import_tab = ( 'deletion_log' === $active || ! WC_Optic_Catalog::is_valid_type( $active ) ) ? 'section' : $active;
+		$import_url = admin_url( 'admin.php?page=wc-optic-import&tab=' . rawurlencode( $import_tab ) );
 		echo '<a class="nav-tab" href="' . esc_url( $import_url ) . '">' . esc_html__( 'Import', 'wc-optic' ) . '</a>';
 		echo '</h2>';
 
-		echo '<form method="post" action="">';
+		echo '<div id="wc-optic-inline-messages" class="wc-optic-inline-messages" aria-live="polite"></div>';
+
+		if ( 'deletion_log' === $active ) {
+			self::render_deletion_log_panel();
+			echo '</div>';
+			return;
+		}
+
+		echo '<form method="post" action="" class="wc-optic-settings-form">';
 		wp_nonce_field( 'wc_optic_settings_save', 'wc_optic_settings_nonce' );
 		echo '<input type="hidden" name="wc_optic_active_tab" value="' . esc_attr( $active ) . '" />';
 
 		$rows = WC_Optic_Catalog::get_terms( $active );
+		echo '<p class="description">' . esc_html__( 'Enter a display name and the SKU fragment used when building product SKUs. Both fields are required for each row you save.', 'wc-optic' ) . '</p>';
 		echo '<table class="widefat striped wc-optic-settings-table"><thead><tr>';
 		echo '<th>' . esc_html__( 'Name', 'wc-optic' ) . '</th>';
-		echo '<th>' . esc_html__( 'Slug', 'wc-optic' ) . '</th>';
 		echo '<th>' . esc_html__( 'SKU fragment', 'wc-optic' ) . '</th>';
 		echo '<th>' . esc_html__( 'Sort', 'wc-optic' ) . '</th>';
 		echo '<th>' . esc_html__( 'Actions', 'wc-optic' ) . '</th>';
@@ -123,18 +139,90 @@ class WC_Optic_Admin_Settings {
 		self::render_row( $active, null, 'new_' . wp_unique_id() );
 
 		echo '</tbody></table>';
+
+		echo '<p class="wc-optic-settings-toolbar">';
+		echo '<button type="button" class="button" id="wc-optic-add-row">' . esc_html__( 'Add new', 'wc-optic' ) . '</button> ';
+		// echo '<span class="description">' . esc_html__( 'Add as many rows as you need, fill them in, then save once with the button below.', 'wc-optic' ) . '</span>';
+		echo '</p>';
+
 		echo '<p><button type="submit" class="button button-primary">' . esc_html__( 'Save changes', 'wc-optic' ) . '</button></p>';
 		echo '</form>';
 
-		echo '<hr/><p><button type="button" class="button" id="wc-optic-quick-add">' . esc_html__( 'Quick add (AJAX)', 'wc-optic' ) . '</button></p>';
-		echo '<div id="wc-optic-quick-add-panel" style="display:none;margin-top:10px;">';
-		echo '<p><input type="text" id="wc-optic-quick-name" placeholder="' . esc_attr__( 'Name', 'wc-optic' ) . '" class="regular-text" /></p>';
-		echo '<p><input type="text" id="wc-optic-quick-slug" placeholder="' . esc_attr__( 'Slug (optional)', 'wc-optic' ) . '" class="regular-text" /></p>';
-		echo '<p><input type="text" id="wc-optic-quick-frag" placeholder="' . esc_attr__( 'SKU fragment (optional)', 'wc-optic' ) . '" class="regular-text" /></p>';
-		echo '<p><button type="button" class="button button-primary" id="wc-optic-quick-submit">' . esc_html__( 'Create', 'wc-optic' ) . '</button></p>';
 		echo '</div>';
+	}
 
-		echo '</div>';
+	/**
+	 * Deletion audit log (read-only).
+	 */
+	protected static function render_deletion_log_panel() {
+		echo '<p class="description">' . esc_html__( 'Each deletion stores the user, date, deleted entry, and products that still referenced that catalog id in their optic SKU fields.', 'wc-optic' ) . '</p>';
+
+		$entries = WC_Optic_Deletion_Log::get_entries( 200 );
+		if ( empty( $entries ) ) {
+			echo '<p>' . esc_html__( 'No catalog deletions have been recorded yet.', 'wc-optic' ) . '</p>';
+			return;
+		}
+
+		echo '<table class="widefat striped wc-optic-deletion-log-table"><thead><tr>';
+		echo '<th>' . esc_html__( 'Date', 'wc-optic' ) . '</th>';
+		echo '<th>' . esc_html__( 'User', 'wc-optic' ) . '</th>';
+		echo '<th>' . esc_html__( 'List', 'wc-optic' ) . '</th>';
+		echo '<th>' . esc_html__( 'Deleted entry', 'wc-optic' ) . '</th>';
+		echo '<th>' . esc_html__( 'Catalog ID', 'wc-optic' ) . '</th>';
+		echo '<th>' . esc_html__( 'Affected products', 'wc-optic' ) . '</th>';
+		echo '</tr></thead><tbody>';
+
+		foreach ( $entries as $entry ) {
+			$user         = $entry->deleted_by ? get_userdata( (int) $entry->deleted_by ) : false;
+			$user_display = $user ? $user->display_name : '—';
+			$date_display = mysql2date(
+				get_option( 'date_format' ) . ' ' . get_option( 'time_format' ),
+				$entry->deleted_at
+			);
+
+			$products = json_decode( $entry->affected_products, true );
+			if ( ! is_array( $products ) ) {
+				$products = array();
+			}
+
+			echo '<tr>';
+			echo '<td>' . esc_html( $date_display ) . '</td>';
+			echo '<td>' . esc_html( $user_display );
+			if ( $user && $user->user_login ) {
+				echo '<br /><span class="description">' . esc_html( $user->user_login ) . '</span>';
+			}
+			echo '</td>';
+			echo '<td>' . esc_html( self::tab_label( $entry->term_type ) ) . '</td>';
+			echo '<td><strong>' . esc_html( $entry->term_name ) . '</strong></td>';
+			echo '<td>' . esc_html( (string) (int) $entry->catalog_term_id ) . '</td>';
+			echo '<td>';
+			if ( empty( $products ) ) {
+				echo '<em>' . esc_html__( 'None', 'wc-optic' ) . '</em>';
+			} else {
+				echo '<ul class="wc-optic-deletion-log-products">';
+				foreach ( $products as $p ) {
+					$pid  = isset( $p['id'] ) ? (int) $p['id'] : 0;
+					$pname = isset( $p['name'] ) ? $p['name'] : '';
+					$post  = $pid ? get_post( $pid ) : null;
+					echo '<li>';
+					if ( $post && get_edit_post_link( $pid ) ) {
+						echo '<a href="' . esc_url( get_edit_post_link( $pid, 'raw' ) ) . '">' . esc_html( $pname ) . '</a>';
+						echo ' <span class="description">#' . esc_html( (string) $pid ) . '</span>';
+					} else {
+						echo esc_html( $pname );
+						if ( $pid ) {
+							echo ' <span class="description">#' . esc_html( (string) $pid ) . ' (' . esc_html__( 'removed or no access', 'wc-optic' ) . ')</span>';
+						}
+					}
+					echo '</li>';
+				}
+				echo '</ul>';
+			}
+			echo '</td>';
+			echo '</tr>';
+		}
+
+		echo '</tbody></table>';
 	}
 
 	/**
@@ -144,18 +232,7 @@ class WC_Optic_Admin_Settings {
 	 * @return string
 	 */
 	protected static function tab_label( $type ) {
-		$map = array(
-			'section'      => __( 'Sections', 'wc-optic' ),
-			'company'      => __( 'Companies', 'wc-optic' ),
-			'brand'        => __( 'Brands', 'wc-optic' ),
-			'timing'       => __( 'Timings', 'wc-optic' ),
-			'color'        => __( 'Colors', 'wc-optic' ),
-			'sign'         => __( 'Signs', 'wc-optic' ),
-			'rx'           => __( 'RX', 'wc-optic' ),
-			'pack'         => __( 'Packs', 'wc-optic' ),
-			'transparency' => __( 'Transparency', 'wc-optic' ),
-		);
-		return isset( $map[ $type ] ) ? $map[ $type ] : $type;
+		return WC_Optic_Catalog::get_type_label( $type );
 	}
 
 	/**
@@ -169,13 +246,20 @@ class WC_Optic_Admin_Settings {
 		$id = $row ? (int) $row->id : 0;
 		$pf = 'wc_optic_row[' . $suffix . ']';
 		echo '<tr>';
-		echo '<td><input type="text" name="' . esc_attr( $pf ) . '[name]" value="' . esc_attr( $row ? $row->name : '' ) . '" class="regular-text" /></td>';
-		echo '<td><input type="text" name="' . esc_attr( $pf ) . '[slug]" value="' . esc_attr( $row ? $row->slug : '' ) . '" class="regular-text" ' . ( $id ? 'readonly="readonly"' : '' ) . ' /></td>';
-		echo '<td><input type="text" name="' . esc_attr( $pf ) . '[sku_fragment]" value="' . esc_attr( $row && isset( $row->sku_fragment ) ? $row->sku_fragment : '' ) . '" class="regular-text" /></td>';
+		$frag_val = $row && isset( $row->sku_fragment ) ? (string) $row->sku_fragment : '';
+		echo '<td><input type="text" name="' . esc_attr( $pf ) . '[name]" value="' . esc_attr( $row ? $row->name : '' ) . '" class="regular-text wc-optic-catalog-name" autocomplete="off" required /></td>';
+		echo '<td><input type="text" name="' . esc_attr( $pf ) . '[sku_fragment]" value="' . esc_attr( $frag_val ) . '" class="regular-text wc-optic-catalog-fragment" autocomplete="off" required /></td>';
 		echo '<td><input type="number" name="' . esc_attr( $pf ) . '[sort_order]" value="' . esc_attr( $row ? (int) $row->sort_order : 0 ) . '" class="small-text" /></td>';
 		echo '<td>';
 		if ( $id ) {
-			echo '<label><input type="checkbox" name="' . esc_attr( $pf ) . '[delete]" value="1" /> ' . esc_html__( 'Delete', 'wc-optic' ) . '</label>';
+			$delete_label = sprintf(
+				/* translators: %s: catalog entry name */
+				__( 'Delete %s', 'wc-optic' ),
+				$row->name
+			);
+			echo '<button type="button" class="button-link-delete wc-optic-delete-row" data-id="' . esc_attr( (string) $id ) . '" aria-label="' . esc_attr( $delete_label ) . '">';
+			echo '<span class="dashicons dashicons-trash" aria-hidden="true"></span>';
+			echo '</button> ';
 			echo '<input type="hidden" name="' . esc_attr( $pf ) . '[id]" value="' . esc_attr( (string) $id ) . '" />';
 		}
 		echo '</td>';
@@ -198,40 +282,50 @@ class WC_Optic_Admin_Settings {
 			return;
 		}
 
+		$skipped_duplicate  = 0;
+		$skipped_incomplete = 0;
+
 		foreach ( wp_unslash( $_POST['wc_optic_row'] ) as $key => $data ) { // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 			if ( ! is_array( $data ) ) {
 				continue;
 			}
 			$name = isset( $data['name'] ) ? sanitize_text_field( $data['name'] ) : '';
-			$slug = isset( $data['slug'] ) ? sanitize_title( $data['slug'] ) : '';
-			$frag = isset( $data['sku_fragment'] ) ? sanitize_text_field( $data['sku_fragment'] ) : '';
+			$frag = isset( $data['sku_fragment'] ) ? WC_Optic_Catalog::sanitize_sku_fragment( $data['sku_fragment'] ) : '';
 			$sort = isset( $data['sort_order'] ) ? (int) $data['sort_order'] : 0;
 			$id   = isset( $data['id'] ) ? (int) $data['id'] : 0;
-			$del  = ! empty( $data['delete'] );
 
-			if ( $del && $id ) {
-				WC_Optic_Catalog::delete( $id );
+			if ( '' === trim( $name ) && '' === $frag ) {
 				continue;
 			}
 
-			if ( '' === $name ) {
+			if ( '' === trim( $name ) || '' === $frag ) {
+				++$skipped_incomplete;
 				continue;
+			}
+
+			$slug = WC_Optic_Catalog::sanitize_slug( $name );
+
+			if ( '' === $slug ) {
+				$slug = 'item-' . strtolower( wp_unique_id() );
 			}
 
 			if ( $id ) {
+				$other = WC_Optic_Catalog::get_by_slug( $active, $slug );
+				if ( $other && (int) $other->id !== $id ) {
+					$slug = WC_Optic_Catalog::sanitize_slug( $name ) . '-' . $id;
+				}
 				WC_Optic_Catalog::update(
 					$id,
 					array(
-						'name'         => $name,
-						'sku_fragment' => $frag,
-						'sort_order'   => $sort,
+						'name'           => $name,
+						'slug'           => $slug,
+						'sku_fragment'   => $frag,
+						'sort_order'     => $sort,
 					)
 				);
 			} else {
-				if ( ! $slug ) {
-					$slug = sanitize_title( $name );
-				}
 				if ( WC_Optic_Catalog::get_by_slug( $active, $slug ) ) {
+					++$skipped_duplicate;
 					continue;
 				}
 				WC_Optic_Catalog::insert( $active, $name, $slug, $frag, $sort );
@@ -240,8 +334,40 @@ class WC_Optic_Admin_Settings {
 
 		add_action(
 			'admin_notices',
-			function () {
+			function () use ( $skipped_duplicate, $skipped_incomplete ) {
 				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Optic catalog saved.', 'wc-optic' ) . '</p></div>';
+				if ( $skipped_incomplete > 0 ) {
+					echo '<div class="notice notice-warning is-dismissible"><p>';
+					echo esc_html(
+						sprintf(
+							/* translators: %d: number of incomplete rows */
+							_n(
+								'%d row was not saved because both name and SKU fragment are required.',
+								'%d rows were not saved because both name and SKU fragment are required.',
+								$skipped_incomplete,
+								'wc-optic'
+							),
+							$skipped_incomplete
+						)
+					);
+					echo '</p></div>';
+				}
+				if ( $skipped_duplicate > 0 ) {
+					echo '<div class="notice notice-warning is-dismissible"><p>';
+					echo esc_html(
+						sprintf(
+							/* translators: %d: number of rows skipped */
+							_n(
+								'%d new row was not created because another entry with the same label already exists in this list.',
+								'%d new rows were not created because other entries with the same label already exist in this list.',
+								$skipped_duplicate,
+								'wc-optic'
+							),
+							$skipped_duplicate
+						)
+					);
+					echo '</p></div>';
+				}
 			}
 		);
 	}

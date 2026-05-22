@@ -44,6 +44,7 @@ class WC_Optic_Plugin {
 			}
 		);
 
+		WC_Optic_Database::maybe_upgrade_schema();
 		WC_Optic_Database::ensure_product_type_term();
 
 		add_filter( 'woocommerce_product_class', array( $this, 'product_class' ), 10, 2 );

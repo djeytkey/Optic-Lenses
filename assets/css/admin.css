@@ -1,5 +1,70 @@
-#wc-optic-quick-add-panel {
-	max-width: 480px;
+/* Optic Import */
+.wc-optic-import-wrap .nav-tab-wrapper {
+	margin-bottom: 1.25em;
+}
+
+.wc-optic-import-panel {
+	max-width: 640px;
+	padding: 1em 1.5em 1.5em;
+	margin-top: 0;
+}
+
+.wc-optic-import-panel h2 {
+	margin-top: 0;
+	padding-top: 0;
+}
+
+.wc-optic-import-template {
+	margin: 1em 0 1.5em;
+}
+
+.wc-optic-import-logs {
+	list-style: disc;
+	padding-left: 1.5em;
+}
+
+/* Optic Settings: space between tabs and content */
+#wc-optic-settings-root .nav-tab-wrapper {
+	margin-bottom: 1.25em;
+}
+
+.wc-optic-settings-table .wc-optic-catalog-fragment {
+	min-width: 8rem;
+}
+
+.wc-optic-settings-table .wc-optic-delete-row {
+	vertical-align: middle;
+	line-height: 1;
+	padding: 2px 4px;
+}
+
+.wc-optic-settings-table .wc-optic-delete-row .dashicons {
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+	vertical-align: middle;
+}
+
+.wc-optic-inline-messages {
+	margin: 1em 0;
+}
+
+.wc-optic-inline-messages .wc-optic-affected-list,
+.wc-optic-deletion-log-products {
+	margin: 0.5em 0 0 1.25em;
+	list-style: disc;
+}
+
+.wc-optic-deletion-log-table td {
+	vertical-align: top;
+}
+
+.wc-optic-settings-toolbar {
+	margin: 1em 0;
+}
+
+.wc-optic-settings-toolbar .description {
+	margin-left: 0.5em;
 }
 
 .wc-optic-settings-table th,

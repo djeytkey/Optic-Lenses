@@ -18,8 +18,10 @@ class WC_Optic_SKU {
 		'brand'        => '_optic_cat_brand',
 		'timing'       => '_optic_cat_timing',
 		'color'        => '_optic_cat_color',
-		'sign'         => '_optic_cat_sign',
-		'rx'           => '_optic_cat_rx',
+		'sph'          => '_optic_cat_sph',
+		'cyl'          => '_optic_cat_cyl',
+		'axis'         => '_optic_cat_axis',
+		'add'          => '_optic_cat_add',
 		'pack'         => '_optic_cat_pack',
 		'transparency' => '_optic_cat_transparency',
 	);
@@ -43,8 +45,7 @@ class WC_Optic_SKU {
 				$parts[] = '';
 				continue;
 			}
-			$frag = isset( $row->sku_fragment ) ? (string) $row->sku_fragment : '';
-			$parts[] = $frag !== '' ? $frag : (string) $row->slug;
+			$parts[] = self::catalog_term_sku_part( $row );
 		}
 		return implode( '', $parts );
 	}
@@ -57,5 +58,26 @@ class WC_Optic_SKU {
 	public static function sync_product_sku( WC_Product $product ) {
 		$sku = self::build_for_product( $product );
 		$product->set_sku( $sku );
+	}
+
+	/**
+	 * Text segment used in dynamic SKU for one catalog row (SKU fragment field).
+	 *
+	 * @param object $row Catalog DB row.
+	 * @return string
+	 */
+	public static function catalog_term_sku_part( $row ) {
+		if ( ! $row ) {
+			return '';
+		}
+		$frag = isset( $row->sku_fragment ) ? trim( (string) $row->sku_fragment ) : '';
+		if ( '' !== $frag ) {
+			return $frag;
+		}
+		$name = isset( $row->name ) ? trim( (string) $row->name ) : '';
+		if ( '' !== $name ) {
+			return $name;
+		}
+		return isset( $row->slug ) ? (string) $row->slug : '';
 	}
 }

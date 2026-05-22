@@ -18,11 +18,54 @@ class WC_Optic_Catalog {
 		'brand',
 		'timing',
 		'color',
-		'sign',
-		'rx',
+		'sph',
+		'cyl',
+		'axis',
+		'add',
 		'pack',
 		'transparency',
 	);
+
+	/**
+	 * Prescription power catalog types (replaces legacy single "rx" list).
+	 *
+	 * @return string[]
+	 */
+	public static function get_power_types() {
+		return array( 'sph', 'cyl', 'axis', 'add' );
+	}
+
+	/**
+	 * Human-readable label for a catalog type tab.
+	 *
+	 * @param string $type Type key.
+	 * @return string
+	 */
+	public static function get_type_label( $type ) {
+		$labels = self::get_type_labels();
+		return isset( $labels[ $type ] ) ? $labels[ $type ] : $type;
+	}
+
+	/**
+	 * All catalog type labels keyed by slug.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function get_type_labels() {
+		return array(
+			'section'      => __( 'Sections', 'wc-optic' ),
+			'company'      => __( 'Companies', 'wc-optic' ),
+			'brand'        => __( 'Brands', 'wc-optic' ),
+			'timing'       => __( 'Timings', 'wc-optic' ),
+			'color'        => __( 'Colors', 'wc-optic' ),
+			'sph'          => __( 'SPH', 'wc-optic' ),
+			'cyl'          => __( 'CYL', 'wc-optic' ),
+			'axis'         => __( 'AXIS', 'wc-optic' ),
+			'add'          => __( 'ADD', 'wc-optic' ),
+			'pack'         => __( 'Packs', 'wc-optic' ),
+			'transparency' => __( 'Transparency', 'wc-optic' ),
+		);
+	}
 
 	/**
 	 * List terms by type.
@@ -61,7 +104,7 @@ class WC_Optic_Catalog {
 		global $wpdb;
 		$table = WC_Optic_Database::table_catalog();
 		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE term_type = %s AND slug = %s", $term_type, $slug ) );
+		return $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$table} WHERE term_type = %s AND slug = %s", $term_type, self::sanitize_slug( $slug ) ) );
 	}
 
 	/**
@@ -77,7 +120,8 @@ class WC_Optic_Catalog {
 	public static function insert( $term_type, $name, $slug, $sku_fragment = '', $sort_order = 0 ) {
 		global $wpdb;
 		$table = WC_Optic_Database::table_catalog();
-		$slug  = sanitize_title( $slug ? $slug : $name );
+		$slug  = self::sanitize_slug( $slug ? $slug : $name );
+		$sku_fragment = self::sanitize_sku_fragment( $sku_fragment );
 		$res   = $wpdb->insert(
 			$table,
 			array(
@@ -129,5 +173,37 @@ class WC_Optic_Catalog {
 	 */
 	public static function is_valid_type( $type ) {
 		return in_array( $type, self::TYPES, true );
+	}
+
+	/**
+	 * SKU fragment as entered (keeps +, -, etc.; used in product SKU).
+	 *
+	 * @param string $raw Raw fragment.
+	 * @return string
+	 */
+	public static function sanitize_sku_fragment( $raw ) {
+		return trim( wp_unslash( (string) $raw ) );
+	}
+
+	/**
+	 * Slug for catalog rows: allows + and - in labels. Unlike sanitize_title(), does not strip these.
+	 *
+	 * @param string $raw Slug or name to derive from.
+	 * @return string
+	 */
+	public static function sanitize_slug( $raw ) {
+		$s = trim( wp_unslash( (string) $raw ) );
+		$s = preg_replace( '/\s+/u', '-', $s );
+		// Letters (incl. Arabic etc.), digits, underscore, plus, hyphen.
+		$s = preg_replace( '/[^\p{L}\p{N}_+\-]/u', '', $s );
+		$s = preg_replace( '/-{2,}/u', '-', $s );
+		$s = trim( $s, '-_' );
+		if ( '' === $s ) {
+			return '';
+		}
+		if ( function_exists( 'mb_strtolower' ) ) {
+			return mb_strtolower( $s, 'UTF-8' );
+		}
+		return strtolower( $s );
 	}
 }

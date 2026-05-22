@@ -1,6 +1,6 @@
 <?php
 /**
- * AJAX handlers (admin instant term creation, SKU preview).
+ * AJAX handlers (admin catalog CRUD, SKU preview).
  *
  * @package WC_Optic_Product
  */
@@ -17,6 +17,7 @@ class WC_Optic_Ajax {
 	 */
 	public static function hooks() {
 		add_action( 'wp_ajax_wc_optic_create_term', array( __CLASS__, 'create_term' ) );
+		add_action( 'wp_ajax_wc_optic_delete_term', array( __CLASS__, 'delete_term' ) );
 		add_action( 'wp_ajax_wc_optic_preview_sku', array( __CLASS__, 'preview_sku' ) );
 	}
 
@@ -30,16 +31,16 @@ class WC_Optic_Ajax {
 		}
 		$type = isset( $_POST['term_type'] ) ? sanitize_key( wp_unslash( $_POST['term_type'] ) ) : '';
 		$name = isset( $_POST['name'] ) ? sanitize_text_field( wp_unslash( $_POST['name'] ) ) : '';
-		if ( ! WC_Optic_Catalog::is_valid_type( $type ) || '' === $name ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid data.', 'wc-optic' ) ), 400 );
+		$frag = isset( $_POST['sku_fragment'] ) ? WC_Optic_Catalog::sanitize_sku_fragment( wp_unslash( $_POST['sku_fragment'] ) ) : '';
+		if ( ! WC_Optic_Catalog::is_valid_type( $type ) || '' === $name || '' === $frag ) {
+			wp_send_json_error( array( 'message' => __( 'Name and SKU fragment are required.', 'wc-optic' ) ), 400 );
 		}
-		$slug          = isset( $_POST['slug'] ) ? sanitize_title( wp_unslash( $_POST['slug'] ) ) : '';
-		$sku_fragment  = isset( $_POST['sku_fragment'] ) ? sanitize_text_field( wp_unslash( $_POST['sku_fragment'] ) ) : '';
-		$existing      = WC_Optic_Catalog::get_by_slug( $type, $slug ? $slug : $name );
+		$slug_check = WC_Optic_Catalog::sanitize_slug( $name );
+		$existing    = WC_Optic_Catalog::get_by_slug( $type, $slug_check );
 		if ( $existing ) {
-			wp_send_json_error( array( 'message' => __( 'Duplicate slug for this type.', 'wc-optic' ) ), 409 );
+			wp_send_json_error( array( 'message' => __( 'An entry with the same label already exists in this list.', 'wc-optic' ) ), 409 );
 		}
-		$id = WC_Optic_Catalog::insert( $type, $name, $slug, $sku_fragment );
+		$id = WC_Optic_Catalog::insert( $type, $name, $slug_check, $frag, 0 );
 		if ( ! $id ) {
 			wp_send_json_error( array( 'message' => __( 'Could not save.', 'wc-optic' ) ), 500 );
 		}
@@ -47,6 +48,45 @@ class WC_Optic_Ajax {
 			array(
 				'id'   => $id,
 				'text' => $name,
+			)
+		);
+	}
+
+	/**
+	 * Delete catalog term (admin settings).
+	 */
+	public static function delete_term() {
+		check_ajax_referer( 'wc_optic_admin', 'nonce' );
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'wc-optic' ) ), 403 );
+		}
+		$id   = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
+		$type = isset( $_POST['term_type'] ) ? sanitize_key( wp_unslash( $_POST['term_type'] ) ) : '';
+		if ( ! $id || ! WC_Optic_Catalog::is_valid_type( $type ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid data.', 'wc-optic' ) ), 400 );
+		}
+		$row = WC_Optic_Catalog::get_term( $id );
+		if ( ! $row || (string) $row->term_type !== $type ) {
+			wp_send_json_error( array( 'message' => __( 'Entry not found.', 'wc-optic' ) ), 404 );
+		}
+
+		$affected = WC_Optic_Deletion_Log::find_products_using_term( $type, $id );
+
+		if ( ! WC_Optic_Catalog::delete( $id ) ) {
+			wp_send_json_error( array( 'message' => __( 'Could not delete.', 'wc-optic' ) ), 500 );
+		}
+
+		$log_id = WC_Optic_Deletion_Log::record( $row, get_current_user_id(), $affected );
+		if ( ! $log_id ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( 'wc-optic: catalog term deleted but deletion log insert failed for catalog id ' . (string) $id );
+		}
+
+		wp_send_json_success(
+			array(
+				'log_id'              => $log_id,
+				'affected_products'   => $affected,
+				'deleted_term_name'   => (string) $row->name,
 			)
 		);
 	}
@@ -72,8 +112,7 @@ class WC_Optic_Ajax {
 				$parts[] = '';
 				continue;
 			}
-			$frag    = isset( $row->sku_fragment ) ? (string) $row->sku_fragment : '';
-			$parts[] = $frag !== '' ? $frag : (string) $row->slug;
+			$parts[] = WC_Optic_SKU::catalog_term_sku_part( $row );
 		}
 		wp_send_json_success( array( 'sku' => implode( '', $parts ) ) );
 	}

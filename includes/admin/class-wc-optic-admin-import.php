@@ -1,6 +1,6 @@
 <?php
 /**
- * Excel / CSV import with mapping and logs.
+ * Per-tab Excel/CSV import with downloadable templates.
  *
  * @package WC_Optic_Product
  */
@@ -14,11 +14,16 @@ class WC_Optic_Admin_Import {
 
 	const OPTION_LOGS = 'wc_optic_import_logs';
 
+	/** Template column headers (row 1). */
+	const TEMPLATE_HEADERS = array( 'Name', 'SKU Fragment' );
+
 	/**
 	 * Hooks.
 	 */
 	public static function hooks() {
 		add_action( 'admin_menu', array( __CLASS__, 'menu' ), 60 );
+		add_action( 'admin_init', array( __CLASS__, 'maybe_download_template' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
 	}
 
 	/**
@@ -33,6 +38,83 @@ class WC_Optic_Admin_Import {
 			'wc-optic-import',
 			array( __CLASS__, 'render_page' )
 		);
+	}
+
+	/**
+	 * Styles on import page.
+	 *
+	 * @param string $hook Hook.
+	 */
+	public static function enqueue( $hook ) {
+		if ( 'woocommerce_page_wc-optic-import' !== $hook ) {
+			return;
+		}
+		wp_enqueue_style( 'dashicons' );
+		wp_enqueue_style(
+			'wc-optic-admin',
+			WC_OPTIC_PLUGIN_URL . 'assets/css/admin.css',
+			array(),
+			WC_OPTIC_VERSION
+		);
+	}
+
+	/**
+	 * Stream template file for active catalog tab.
+	 */
+	public static function maybe_download_template() {
+		if ( ! isset( $_GET['page'] ) || 'wc-optic-import' !== $_GET['page'] ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return;
+		}
+		if ( empty( $_GET['wc_optic_download_template'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return;
+		}
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( esc_html__( 'Permission denied.', 'wc-optic' ) );
+		}
+
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! WC_Optic_Catalog::is_valid_type( $tab ) ) {
+			wp_die( esc_html__( 'Invalid catalog type.', 'wc-optic' ) );
+		}
+
+		check_admin_referer( 'wc_optic_template_' . $tab );
+
+		self::output_template( $tab );
+		exit;
+	}
+
+	/**
+	 * Output XLSX or CSV template (headers on row 1, data from row 2).
+	 *
+	 * @param string $term_type Catalog type slug.
+	 */
+	protected static function output_template( $term_type ) {
+		$label    = self::tab_label( $term_type );
+		$basename = 'optic-import-' . $term_type;
+
+		if ( class_exists( '\PhpOffice\PhpSpreadsheet\Spreadsheet' ) ) {
+			$spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+			$sheet       = $spreadsheet->getActiveSheet();
+			$sheet->setTitle( substr( $label, 0, 31 ) );
+			$sheet->fromArray( self::TEMPLATE_HEADERS, null, 'A1' );
+			$sheet->getStyle( 'A1:B1' )->getFont()->setBold( true );
+
+			header( 'Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' );
+			header( 'Content-Disposition: attachment; filename="' . $basename . '.xlsx"' );
+			header( 'Cache-Control: max-age=0' );
+
+			$writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx( $spreadsheet );
+			$writer->save( 'php://output' );
+			return;
+		}
+
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . $basename . '.csv"' );
+		$out = fopen( 'php://output', 'w' );
+		if ( false !== $out ) {
+			fputcsv( $out, self::TEMPLATE_HEADERS );
+			fclose( $out );
+		}
 	}
 
 	/**
@@ -52,51 +134,90 @@ class WC_Optic_Admin_Import {
 	}
 
 	/**
-	 * Render import UI.
+	 * Render import UI with one tab per catalog list.
 	 */
 	public static function render_page() {
 		if ( ! current_user_can( 'manage_woocommerce' ) ) {
 			return;
 		}
 
-		$result = null;
-		if ( ! empty( $_POST['wc_optic_import_nonce'] ) && wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['wc_optic_import_nonce'] ) ), 'wc_optic_import' ) ) {
-			$result = self::process_import();
+		$active = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'section'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( ! WC_Optic_Catalog::is_valid_type( $active ) ) {
+			$active = 'section';
 		}
 
-		echo '<div class="wrap"><h1>' . esc_html__( 'Optic catalog import', 'wc-optic' ) . '</h1>';
+		$result = null;
+		if (
+			! empty( $_POST['wc_optic_import_nonce'] )
+			&& wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['wc_optic_import_nonce'] ) ), 'wc_optic_import_' . $active )
+		) {
+			$result = self::process_import( $active );
+		}
+
+		$settings_url = admin_url( 'admin.php?page=wc-optic-settings' );
+
+		echo '<div class="wrap woocommerce wc-optic-import-wrap">';
+		echo '<h1>' . esc_html__( 'Optic catalog import', 'wc-optic' ) . '</h1>';
+		echo '<p><a href="' . esc_url( $settings_url ) . '">&larr; ' . esc_html__( 'Back to Optic Settings', 'wc-optic' ) . '</a></p>';
 
 		if ( is_array( $result ) ) {
 			$cls = $result['error'] ? 'notice-error' : 'notice-success';
-			echo '<div class="notice ' . esc_attr( $cls ) . '"><p>' . esc_html( $result['message'] ) . '</p></div>';
+			echo '<div class="notice ' . esc_attr( $cls ) . ' is-dismissible"><p>' . esc_html( $result['message'] ) . '</p></div>';
 		}
 
-		echo '<form method="post" enctype="multipart/form-data">';
-		wp_nonce_field( 'wc_optic_import', 'wc_optic_import_nonce' );
-		echo '<p><input type="file" name="wc_optic_file" accept=".csv,.txt,.xlsx" required /></p>';
+		echo '<h2 class="nav-tab-wrapper">';
+		foreach ( WC_Optic_Catalog::TYPES as $type ) {
+			$url   = admin_url( 'admin.php?page=wc-optic-import&tab=' . $type );
+			$class = $active === $type ? 'nav-tab nav-tab-active' : 'nav-tab';
+			echo '<a class="' . esc_attr( $class ) . '" href="' . esc_url( $url ) . '">' . esc_html( self::tab_label( $type ) ) . '</a>';
+		}
+		echo '</h2>';
 
-		echo '<h2>' . esc_html__( 'Column mapping', 'wc-optic' ) . '</h2>';
-		echo '<p class="description">' . esc_html__( 'Enter the letters of Excel columns (A, B, C…) or CSV column indexes starting at 0.', 'wc-optic' ) . '</p>';
-		echo '<table class="form-table"><tbody>';
-		$fields = array(
-			'term_type'    => __( 'Type (section, company, …)', 'wc-optic' ),
-			'name'         => __( 'Name', 'wc-optic' ),
-			'slug'         => __( 'Slug (optional)', 'wc-optic' ),
-			'sku_fragment' => __( 'SKU fragment (optional)', 'wc-optic' ),
-			'sort_order'   => __( 'Sort order (optional)', 'wc-optic' ),
+		$template_url = wp_nonce_url(
+			add_query_arg(
+				array(
+					'page'                        => 'wc-optic-import',
+					'tab'                         => $active,
+					'wc_optic_download_template' => '1',
+				),
+				admin_url( 'admin.php' )
+			),
+			'wc_optic_template_' . $active
 		);
-		foreach ( $fields as $key => $lbl ) {
-			echo '<tr><th><label for="map_' . esc_attr( $key ) . '">' . esc_html( $lbl ) . '</label></th>';
-			echo '<td><input name="map_' . esc_attr( $key ) . '" id="map_' . esc_attr( $key ) . '" class="regular-text" placeholder="e.g. A or 0" /></td></tr>';
-		}
-		echo '</tbody></table>';
 
-		submit_button( __( 'Run import', 'wc-optic' ) );
+		echo '<div class="wc-optic-import-panel card">';
+		echo '<h2>' . esc_html( self::tab_label( $active ) ) . '</h2>';
+		echo '<p class="description">' . esc_html__( 'Use the template: row 1 contains headers (Name, SKU Fragment). Enter your data starting from row 2.', 'wc-optic' ) . '</p>';
+
+		echo '<p class="wc-optic-import-template">';
+		echo '<a class="button" href="' . esc_url( $template_url ) . '">';
+		echo '<span class="dashicons dashicons-download" style="vertical-align:middle;margin-top:3px;"></span> ';
+		echo esc_html__( 'Download template', 'wc-optic' );
+		echo '</a>';
+		if ( ! class_exists( '\PhpOffice\PhpSpreadsheet\Spreadsheet' ) ) {
+			echo ' <span class="description">' . esc_html__( '(CSV — run composer install in the plugin folder for XLSX templates)', 'wc-optic' ) . '</span>';
+		}
+		echo '</p>';
+
+		echo '<form method="post" enctype="multipart/form-data" class="wc-optic-import-form">';
+		wp_nonce_field( 'wc_optic_import_' . $active, 'wc_optic_import_nonce' );
+		echo '<input type="hidden" name="wc_optic_term_type" value="' . esc_attr( $active ) . '" />';
+
+		echo '<table class="form-table" role="presentation"><tbody><tr>';
+		echo '<th scope="row"><label for="wc_optic_file">' . esc_html__( 'Excel / CSV file', 'wc-optic' ) . '</label></th>';
+		echo '<td>';
+		echo '<input type="file" name="wc_optic_file" id="wc_optic_file" accept=".xlsx,.csv,.txt" required />';
+		echo '<p class="description">' . esc_html__( 'Accepted formats: .xlsx, .csv', 'wc-optic' ) . '</p>';
+		echo '</td></tr></tbody></table>';
+
+		submit_button( __( 'Import into this list', 'wc-optic' ), 'primary', 'submit', false );
 		echo '</form>';
+		echo '</div>';
 
 		$logs = get_option( self::OPTION_LOGS, array() );
 		if ( is_array( $logs ) && $logs ) {
-			echo '<h2>' . esc_html__( 'Recent import logs', 'wc-optic' ) . '</h2><ul style="list-style:disc;padding-left:20px;">';
+			echo '<h2>' . esc_html__( 'Recent import logs', 'wc-optic' ) . '</h2>';
+			echo '<ul class="wc-optic-import-logs">';
 			foreach ( array_slice( $logs, 0, 20 ) as $log ) {
 				echo '<li><code>' . esc_html( isset( $log['time'] ) ? $log['time'] : '' ) . '</code> — ';
 				echo esc_html( isset( $log['message'] ) ? $log['message'] : '' );
@@ -109,12 +230,30 @@ class WC_Optic_Admin_Import {
 	}
 
 	/**
-	 * Process uploaded file.
+	 * Tab label (matches Optic Settings).
 	 *
-	 * @return array{error:bool,message:string}|null
+	 * @param string $type Type.
+	 * @return string
 	 */
-	protected static function process_import() {
-		if ( empty( $_FILES['wc_optic_file']['tmp_name'] ) ) {
+	protected static function tab_label( $type ) {
+		return WC_Optic_Catalog::get_type_label( $type );
+	}
+
+	/**
+	 * Process uploaded file for one catalog tab.
+	 *
+	 * @param string $term_type Active tab / catalog type.
+	 * @return array{error:bool,message:string}
+	 */
+	protected static function process_import( $term_type ) {
+		if ( ! WC_Optic_Catalog::is_valid_type( $term_type ) ) {
+			return array(
+				'error'   => true,
+				'message' => __( 'Invalid catalog type.', 'wc-optic' ),
+			);
+		}
+
+		if ( empty( $_FILES['wc_optic_file']['tmp_name'] ) || ! is_uploaded_file( $_FILES['wc_optic_file']['tmp_name'] ) ) {
 			return array(
 				'error'   => true,
 				'message' => __( 'No file uploaded.', 'wc-optic' ),
@@ -124,20 +263,7 @@ class WC_Optic_Admin_Import {
 		$file = $_FILES['wc_optic_file']['tmp_name'];
 		$name = isset( $_FILES['wc_optic_file']['name'] ) ? sanitize_file_name( wp_unslash( $_FILES['wc_optic_file']['name'] ) ) : 'import';
 
-		$map = array();
-		foreach ( array( 'term_type', 'name', 'slug', 'sku_fragment', 'sort_order' ) as $f ) {
-			$key          = 'map_' . $f;
-			$map[ $f ]    = isset( $_POST[ $key ] ) ? sanitize_text_field( wp_unslash( $_POST[ $key ] ) ) : '';
-		}
-
-		if ( '' === $map['term_type'] || '' === $map['name'] ) {
-			return array(
-				'error'   => true,
-				'message' => __( 'Map at least type and name columns.', 'wc-optic' ),
-			);
-		}
-
-		$ext = strtolower( pathinfo( $name, PATHINFO_EXTENSION ) );
+		$ext  = strtolower( pathinfo( $name, PATHINFO_EXTENSION ) );
 		$rows = array();
 		if ( 'csv' === $ext || 'txt' === $ext ) {
 			$rows = self::parse_csv( $file );
@@ -152,34 +278,53 @@ class WC_Optic_Admin_Import {
 		} else {
 			return array(
 				'error'   => true,
-				'message' => __( 'Unsupported file type. Use CSV or XLSX.', 'wc-optic' ),
+				'message' => __( 'Unsupported file type. Use .xlsx or .csv.', 'wc-optic' ),
 			);
 		}
 
+		if ( count( $rows ) < 1 ) {
+			return array(
+				'error'   => true,
+				'message' => __( 'The file is empty.', 'wc-optic' ),
+			);
+		}
+
+		// Row 1 = headers; data from row 2 onward.
+		$data_rows = array_slice( $rows, 1 );
+
 		$inserted = 0;
 		$skipped  = 0;
-		foreach ( $rows as $r ) {
-			$type = self::map_cell( $r, $map['term_type'] );
-			$nm   = self::map_cell( $r, $map['name'] );
-			if ( '' === $type || '' === $nm ) {
-				continue;
-			}
-			$type = strtolower( sanitize_key( $type ) );
-			if ( ! WC_Optic_Catalog::is_valid_type( $type ) ) {
-				++$skipped;
-				continue;
-			}
-			$slug = self::map_cell( $r, $map['slug'] );
-			$slug = $slug ? sanitize_title( $slug ) : sanitize_title( $nm );
-			$frag = self::map_cell( $r, $map['sku_fragment'] );
-			$sort = self::map_cell( $r, $map['sort_order'] );
-			$sort = '' !== $sort ? (int) $sort : 0;
+		$list_lbl = self::tab_label( $term_type );
 
-			if ( WC_Optic_Catalog::get_by_slug( $type, $slug ) ) {
+		foreach ( $data_rows as $r ) {
+			if ( ! is_array( $r ) ) {
 				++$skipped;
 				continue;
 			}
-			$res = WC_Optic_Catalog::insert( $type, $nm, $slug, $frag, $sort );
+
+			$nm = isset( $r[0] ) ? sanitize_text_field( trim( (string) $r[0] ) ) : '';
+			$frag = isset( $r[1] ) ? WC_Optic_Catalog::sanitize_sku_fragment( $r[1] ) : '';
+
+			if ( '' === $nm && '' === $frag ) {
+				continue;
+			}
+
+			if ( '' === $nm || '' === $frag ) {
+				++$skipped;
+				continue;
+			}
+
+			$slug = WC_Optic_Catalog::sanitize_slug( $nm );
+			if ( '' === $slug ) {
+				$slug = 'item-' . strtolower( wp_unique_id() );
+			}
+
+			if ( WC_Optic_Catalog::get_by_slug( $term_type, $slug ) ) {
+				++$skipped;
+				continue;
+			}
+
+			$res = WC_Optic_Catalog::insert( $term_type, $nm, $slug, $frag, 0 );
 			if ( $res ) {
 				++$inserted;
 			} else {
@@ -188,14 +333,17 @@ class WC_Optic_Admin_Import {
 		}
 
 		$msg = sprintf(
-			/* translators: 1: inserted count, 2: skipped count */
-			__( 'Import finished: %1$d inserted, %2$d skipped (duplicates or invalid).', 'wc-optic' ),
+			/* translators: 1: list name, 2: inserted count, 3: skipped count */
+			__( '%1$s: %2$d imported, %3$d skipped (empty, duplicate, or invalid).', 'wc-optic' ),
+			$list_lbl,
 			$inserted,
 			$skipped
 		);
+
 		self::add_log(
 			array(
-				'message' => $msg . ' (' . $name . ')',
+				'message' => $msg . ' — ' . $name,
+				'type'    => $term_type,
 			)
 		);
 
@@ -250,41 +398,5 @@ class WC_Optic_Admin_Import {
 		} catch ( Exception $e ) {
 			return new WP_Error( 'wc_optic_xlsx_read', $e->getMessage() );
 		}
-	}
-
-	/**
-	 * Resolve mapping token to cell value.
-	 *
-	 * @param array  $row Row (0-indexed columns).
-	 * @param string $map Map token like "A" or "0".
-	 * @return string
-	 */
-	protected static function map_cell( array $row, $map ) {
-		$map = trim( (string) $map );
-		if ( '' === $map ) {
-			return '';
-		}
-		if ( preg_match( '/^[A-Za-z]+$/', $map ) ) {
-			$idx = self::excel_col_to_index( strtoupper( $map ) );
-		} else {
-			$idx = (int) $map;
-		}
-		return isset( $row[ $idx ] ) ? trim( (string) $row[ $idx ] ) : '';
-	}
-
-	/**
-	 * Excel column letters to 0-based index.
-	 *
-	 * @param string $col Column letters.
-	 * @return int
-	 */
-	protected static function excel_col_to_index( $col ) {
-		$col = preg_replace( '/[^A-Z]/', '', $col );
-		$len = strlen( $col );
-		$idx = 0;
-		for ( $i = 0; $i < $len; $i++ ) {
-			$idx = $idx * 26 + ( ord( $col[ $i ] ) - 64 );
-		}
-		return max( 0, $idx - 1 );
 	}
 }

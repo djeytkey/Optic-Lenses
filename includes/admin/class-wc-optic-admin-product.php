@@ -108,18 +108,11 @@ class WC_Optic_Admin_Product {
 	 * @return string
 	 */
 	protected static function type_label( $type ) {
-		$map = array(
-			'section'      => __( 'Section', 'wc-optic' ),
-			'company'      => __( 'Company', 'wc-optic' ),
-			'brand'        => __( 'Brand', 'wc-optic' ),
-			'timing'       => __( 'Timing', 'wc-optic' ),
-			'color'        => __( 'Color', 'wc-optic' ),
-			'sign'         => __( 'Sign', 'wc-optic' ),
-			'rx'           => __( 'RX', 'wc-optic' ),
-			'pack'         => __( 'Pack', 'wc-optic' ),
-			'transparency' => __( 'Transparency', 'wc-optic' ),
-		);
-		return isset( $map[ $type ] ) ? $map[ $type ] : $type;
+		$labels = WC_Optic_Catalog::get_type_labels();
+		if ( isset( $labels[ $type ] ) ) {
+			return $labels[ $type ];
+		}
+		return $type;
 	}
 
 	/**
