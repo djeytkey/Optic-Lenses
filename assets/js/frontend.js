@@ -1,6 +1,25 @@
 ( function ( $ ) {
 	'use strict';
 
+	function formatPrice( amount ) {
+		if ( typeof wcOpticFront === 'undefined' ) {
+			return String( amount );
+		}
+		var n = parseFloat( amount );
+		if ( isNaN( n ) ) {
+			n = 0;
+		}
+		var decimals = parseInt( wcOpticFront.decimals, 10 );
+		if ( isNaN( decimals ) ) {
+			decimals = 2;
+		}
+		var parts = n.toFixed( decimals ).split( '.' );
+		var intPart = parts[ 0 ].replace( /\B(?=(\d{3})+(?!\d))/g, wcOpticFront.thousandSep || ',' );
+		var formatted = parts.length > 1 ? intPart + ( wcOpticFront.decimalSep || '.' ) + parts[ 1 ] : intPart;
+		var format = wcOpticFront.priceFormat || '%1$s%2$s';
+		return format.replace( '%1$s', wcOpticFront.currencySymbol || '' ).replace( '%2$s', formatted );
+	}
+
 	function syncLineQuantity() {
 		var perEye = $( '#wc_optic_qty_per_eye' ).is( ':checked' );
 		var q = 1;
@@ -12,6 +31,21 @@
 			q = Math.max( 1, parseInt( $( '#wc_optic_qty' ).val(), 10 ) || 1 );
 		}
 		$( '#wc_optic_line_quantity' ).val( q );
+		updateLineTotal( q );
+	}
+
+	function updateLineTotal( qty ) {
+		var $wrap = $( '.wc-optic-pricing' );
+		var $display = $( '#wc_optic_line_total_display' );
+		if ( ! $wrap.length || ! $display.length || typeof wcOpticFront === 'undefined' ) {
+			return;
+		}
+		var unit = parseFloat( $wrap.data( 'unit-price' ) );
+		if ( isNaN( unit ) ) {
+			unit = parseFloat( wcOpticFront.unitPrice );
+		}
+		var total = unit * Math.max( 1, qty || 1 );
+		$display.text( formatPrice( total ) );
 	}
 
 	function toggleSamePower() {

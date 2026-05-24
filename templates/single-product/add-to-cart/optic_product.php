@@ -42,6 +42,24 @@ do_action( 'woocommerce_before_add_to_cart_form' );
 		<?php echo esc_html( $div_label ); ?>
 	</p>
 
+	<?php
+	$unit_price = WC_Optic_Pricing::get_unit_price( $product );
+	if ( '' !== (string) $product->get_price() ) :
+		$initial_qty = $qty_per_eye_default ? 2 : 1;
+		$line_total  = WC_Optic_Pricing::calculate_line_total( $unit_price, $initial_qty );
+		?>
+		<div class="wc-optic-pricing" data-unit-price="<?php echo esc_attr( (string) $unit_price ); ?>">
+			<p class="wc-optic-unit-price">
+				<strong><?php esc_html_e( 'Unit price', 'wc-optic' ); ?>:</strong>
+				<?php echo wp_kses_post( wc_price( $unit_price ) ); ?>
+			</p>
+			<p class="wc-optic-line-total">
+				<strong><?php esc_html_e( 'Estimated total', 'wc-optic' ); ?>:</strong>
+				<span id="wc_optic_line_total_display"><?php echo wp_kses_post( wc_price( $line_total ) ); ?></span>
+			</p>
+		</div>
+	<?php endif; ?>
+
 	<fieldset class="wc-optic-fieldset">
 		<legend class="screen-reader-text"><?php esc_html_e( 'Prescription', 'wc-optic' ); ?></legend>
 
@@ -59,7 +77,7 @@ do_action( 'woocommerce_before_add_to_cart_form' );
 				<?php foreach ( $powers as $p ) : ?>
 					<p class="form-row wc-optic-power">
 						<label for="wc_optic_left_<?php echo esc_attr( $p ); ?>">
-							<span class="wc-optic-ltr" dir="ltr"><?php echo esc_html( strtoupper( $p ) ); ?></span>
+							<span class="wc-optic-ltr" dir="ltr"><?php echo esc_html( WC_Optic_Catalog::get_power_field_label( $p ) ); ?></span>
 						</label>
 						<input type="text" name="wc_optic_left_<?php echo esc_attr( $p ); ?>" id="wc_optic_left_<?php echo esc_attr( $p ); ?>" class="input-text" autocomplete="off" required />
 					</p>
@@ -71,7 +89,7 @@ do_action( 'woocommerce_before_add_to_cart_form' );
 				<?php foreach ( $powers as $p ) : ?>
 					<p class="form-row wc-optic-power">
 						<label for="wc_optic_right_<?php echo esc_attr( $p ); ?>">
-							<span class="wc-optic-ltr" dir="ltr"><?php echo esc_html( strtoupper( $p ) ); ?></span>
+							<span class="wc-optic-ltr" dir="ltr"><?php echo esc_html( WC_Optic_Catalog::get_power_field_label( $p ) ); ?></span>
 						</label>
 						<input type="text" name="wc_optic_right_<?php echo esc_attr( $p ); ?>" id="wc_optic_right_<?php echo esc_attr( $p ); ?>" class="input-text" autocomplete="off" />
 					</p>

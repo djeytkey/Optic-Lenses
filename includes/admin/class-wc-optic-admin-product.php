@@ -54,10 +54,31 @@ class WC_Optic_Admin_Product {
 
 		woocommerce_wp_select(
 			array(
-				'id'      => '_optic_division',
-				'label'   => __( 'Optical division', 'wc-optic' ),
-				'options' => self::division_options(),
-				'value'   => $product->get_meta( '_optic_division', true ),
+				'id'                => '_optic_division',
+				'label'             => __( 'Optical division', 'wc-optic' ),
+				'options'           => self::division_options(),
+				'value'             => $product->get_meta( '_optic_division', true ),
+				'class'             => 'wc-enhanced-select wc-optic-select2',
+				'wrapper_class'     => 'form-field-wide',
+				'custom_attributes' => array(
+					'data-placeholder' => __( '— Select —', 'wc-optic' ),
+				),
+			)
+		);
+
+		woocommerce_wp_text_input(
+			array(
+				'id'                => '_optic_unit_price',
+				'label'             => __( 'Unit price', 'wc-optic' ),
+				'description'       => __( 'Price per lens/unit. Cart line total = unit price × quantity (or × left + right quantities when quantity per eye is enabled). Synced to the WooCommerce product price.', 'wc-optic' ),
+				'value'             => $product->get_regular_price( 'edit' ),
+				'class'             => 'wc_input_price short',
+				'wrapper_class'     => 'form-field-wide',
+				'data_type'         => 'price',
+				'custom_attributes' => array(
+					'step' => 'any',
+					'min'  => '0',
+				),
 			)
 		);
 
@@ -71,6 +92,11 @@ class WC_Optic_Admin_Product {
 		);
 
 		echo '<p class="form-field"><strong>' . esc_html__( 'SKU components', 'wc-optic' ) . '</strong></p>';
+		echo '<p class="form-field wc-optic-sku-powers-hint description">';
+		echo esc_html__( 'Power fields (SPH, CYL, AXIS, ADD) depend on the optical division selected above.', 'wc-optic' );
+		echo '</p>';
+
+		$power_types = WC_Optic_Catalog::get_power_types();
 
 		foreach ( WC_Optic_SKU::META_KEYS as $type => $meta_key ) {
 			$label = self::type_label( $type );
@@ -79,15 +105,23 @@ class WC_Optic_Admin_Product {
 			foreach ( $rows as $row ) {
 				$opts[ $row->id ] = $row->name;
 			}
+
+			$wrapper_class = 'wc-optic-sku-field form-field-wide';
+			if ( in_array( $type, $power_types, true ) ) {
+				$wrapper_class .= ' wc-optic-sku-power';
+			}
+
 			woocommerce_wp_select(
 				array(
-					'id'      => $meta_key,
-					'label'   => $label,
-					'options' => $opts,
-					'value'   => $product->get_meta( $meta_key, true ),
-					'class'   => 'wc-enhanced-select wc-optic-catalog-select',
+					'id'            => $meta_key,
+					'label'         => $label,
+					'options'       => $opts,
+					'value'         => $product->get_meta( $meta_key, true ),
+					'class'             => 'wc-enhanced-select wc-optic-select2 wc-optic-catalog-select',
+					'wrapper_class'     => $wrapper_class,
 					'custom_attributes' => array(
-						'data-optic-type' => $type,
+						'data-optic-type'  => $type,
+						'data-placeholder' => __( '— Select —', 'wc-optic' ),
 					),
 				)
 			);
@@ -145,7 +179,22 @@ class WC_Optic_Admin_Product {
 		$product->update_meta_data( '_optic_division', $division );
 		$product->update_meta_data( '_optic_default_qty_per_eye', isset( $_POST['_optic_default_qty_per_eye'] ) ? 'yes' : 'no' );
 
+		if ( isset( $_POST['_optic_unit_price'] ) ) {
+			$unit_price = wc_format_decimal( wp_unslash( $_POST['_optic_unit_price'] ) );
+			$product->set_regular_price( $unit_price );
+			if ( '' === $product->get_sale_price( 'edit' ) ) {
+				$product->set_price( $unit_price );
+			}
+		}
+
+		$allowed_powers = $division ? WC_Optic_Plugin::get_powers_for_division( $division ) : array();
+		$power_types    = WC_Optic_Catalog::get_power_types();
+
 		foreach ( WC_Optic_SKU::META_KEYS as $type => $meta_key ) {
+			if ( in_array( $type, $power_types, true ) && ! in_array( $type, $allowed_powers, true ) ) {
+				$product->update_meta_data( $meta_key, 0 );
+				continue;
+			}
 			$val = isset( $_POST[ $meta_key ] ) ? absint( wp_unslash( $_POST[ $meta_key ] ) ) : 0;
 			$product->update_meta_data( $meta_key, $val );
 		}
@@ -167,22 +216,36 @@ class WC_Optic_Admin_Product {
 			return;
 		}
 
-		wp_enqueue_script( 'selectWoo' );
 		wp_enqueue_style( 'woocommerce_admin_styles' );
+		wp_enqueue_script( 'selectWoo' );
+		wp_enqueue_script( 'wc-enhanced-select' );
+		wp_enqueue_style(
+			'wc-optic-admin',
+			WC_OPTIC_PLUGIN_URL . 'assets/css/admin.css',
+			array(),
+			WC_OPTIC_VERSION
+		);
 
 		wp_enqueue_script(
 			'wc-optic-admin-product',
 			WC_OPTIC_PLUGIN_URL . 'assets/js/admin-product.js',
-			array( 'jquery', 'selectWoo', 'wp-util' ),
+			array( 'jquery', 'selectWoo', 'wc-enhanced-select', 'wp-util' ),
 			WC_OPTIC_VERSION,
 			true
 		);
+		$division_powers = array();
+		foreach ( WC_Optic_Plugin::get_divisions() as $slug => $def ) {
+			$division_powers[ $slug ] = $def['powers'];
+		}
+
 		wp_localize_script(
 			'wc-optic-admin-product',
 			'wcOpticAdmin',
 			array(
-				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-				'nonce'   => wp_create_nonce( 'wc_optic_admin' ),
+				'ajaxUrl'         => admin_url( 'admin-ajax.php' ),
+				'nonce'           => wp_create_nonce( 'wc_optic_admin' ),
+				'divisionPowers'  => $division_powers,
+				'powerTypes'      => WC_Optic_Catalog::get_power_types(),
 			)
 		);
 	}

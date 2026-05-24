@@ -176,6 +176,38 @@ class WC_Optic_Catalog {
 	}
 
 	/**
+	 * Validate a catalog row id belongs to the expected power/type.
+	 *
+	 * @param int    $id Catalog row id.
+	 * @param string $term_type Expected term_type (e.g. sph, axis).
+	 * @return object|null Row or null if invalid.
+	 */
+	public static function get_valid_term( $id, $term_type ) {
+		$id = absint( $id );
+		if ( ! $id || ! self::is_valid_type( $term_type ) ) {
+			return null;
+		}
+		$row = self::get_term( $id );
+		if ( ! $row || (string) $row->term_type !== (string) $term_type ) {
+			return null;
+		}
+		return $row;
+	}
+
+	/**
+	 * Display label for a power field (AXIS not AXIS from strtoupper axis).
+	 *
+	 * @param string $power Power key (sph, cyl, axis, add).
+	 * @return string
+	 */
+	public static function get_power_field_label( $power ) {
+		if ( in_array( $power, self::get_power_types(), true ) ) {
+			return self::get_type_label( $power );
+		}
+		return strtoupper( $power );
+	}
+
+	/**
 	 * SKU fragment as entered (keeps +, -, etc.; used in product SKU).
 	 *
 	 * @param string $raw Raw fragment.

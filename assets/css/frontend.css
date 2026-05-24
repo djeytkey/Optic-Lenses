@@ -45,3 +45,18 @@
 .wc-optic-notice {
 	color: #b32d2e;
 }
+
+.wc-optic-pricing {
+	margin: 0 0 1em;
+	padding: 0.75em 1em;
+	background: #f6f7f7;
+	border-radius: 4px;
+}
+
+.wc-optic-pricing p {
+	margin: 0.25em 0;
+}
+
+.wc-optic-line-total {
+	font-size: 1.05em;
+}

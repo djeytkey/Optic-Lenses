@@ -33,8 +33,16 @@ class WC_Optic_SKU {
 	 * @return string
 	 */
 	public static function build_for_product( WC_Product $product ) {
+		$division       = $product->get_meta( '_optic_division', true );
+		$allowed_powers = $division ? WC_Optic_Plugin::get_powers_for_division( $division ) : array();
+		$power_types    = WC_Optic_Catalog::get_power_types();
+
 		$parts = array();
 		foreach ( self::META_KEYS as $type => $meta_key ) {
+			if ( in_array( $type, $power_types, true ) && ! in_array( $type, $allowed_powers, true ) ) {
+				$parts[] = '';
+				continue;
+			}
 			$id = (int) $product->get_meta( $meta_key, true );
 			if ( ! $id ) {
 				$parts[] = '';
@@ -79,5 +87,37 @@ class WC_Optic_SKU {
 			return $name;
 		}
 		return isset( $row->slug ) ? (string) $row->slug : '';
+	}
+
+	/**
+	 * Build SKU preview from posted catalog ids (admin AJAX).
+	 *
+	 * @param array  $catalog_ids Map of type => catalog row id.
+	 * @param string $division    Optical division slug (optional).
+	 * @return string
+	 */
+	public static function build_from_catalog_ids( array $catalog_ids, $division = '' ) {
+		$allowed_powers = $division ? WC_Optic_Plugin::get_powers_for_division( $division ) : array();
+		$power_types    = WC_Optic_Catalog::get_power_types();
+		$parts          = array();
+
+		foreach ( self::META_KEYS as $type => $meta_key ) {
+			if ( in_array( $type, $power_types, true ) && ! in_array( $type, $allowed_powers, true ) ) {
+				$parts[] = '';
+				continue;
+			}
+			$id = isset( $catalog_ids[ $type ] ) ? absint( $catalog_ids[ $type ] ) : 0;
+			if ( ! $id ) {
+				$parts[] = '';
+				continue;
+			}
+			$row = WC_Optic_Catalog::get_term( $id );
+			if ( ! $row ) {
+				$parts[] = '';
+				continue;
+			}
+			$parts[] = self::catalog_term_sku_part( $row );
+		}
+		return implode( '', $parts );
 	}
 }

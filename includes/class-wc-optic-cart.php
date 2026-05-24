@@ -15,6 +15,13 @@ class WC_Optic_Cart {
 	const CART_KEY = '_wc_optic';
 
 	/**
+	 * Parsed add-to-cart payload cache for the current request.
+	 *
+	 * @var array<int, array|WP_Error>
+	 */
+	protected static $parse_cache = array();
+
+	/**
 	 * Hooks.
 	 */
 	public static function hooks() {
@@ -28,24 +35,47 @@ class WC_Optic_Cart {
 	}
 
 	/**
+	 * Build optic payload from request (public for pricing/qty helpers).
+	 *
+	 * @param int $product_id Product id.
+	 * @return array|WP_Error
+	 */
+	public static function parse_request_for_product( $product_id ) {
+		return self::parse_request( $product_id );
+	}
+
+	/**
 	 * Build optic payload from request.
 	 *
 	 * @param int $product_id Product id.
 	 * @return array|WP_Error
 	 */
 	protected static function parse_request( $product_id ) {
+		$product_id = absint( $product_id );
+		if ( isset( self::$parse_cache[ $product_id ] ) ) {
+			return self::$parse_cache[ $product_id ];
+		}
+
 		$product = wc_get_product( $product_id );
 		if ( ! $product || 'optic_product' !== $product->get_type() ) {
-			return new WP_Error( 'wc_optic', __( 'Invalid optic product.', 'wc-optic' ) );
+			self::$parse_cache[ $product_id ] = new WP_Error( 'wc_optic', __( 'Invalid optic product.', 'wc-optic' ) );
+			return self::$parse_cache[ $product_id ];
 		}
 
 		if ( ! empty( $_POST['wc_optic_nonce'] ) && ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['wc_optic_nonce'] ) ), 'wc_optic_add_to_cart' ) ) {
-			return new WP_Error( 'wc_optic', __( 'Security check failed. Please reload the page.', 'wc-optic' ) );
+			self::$parse_cache[ $product_id ] = new WP_Error( 'wc_optic', __( 'Security check failed. Please reload the page.', 'wc-optic' ) );
+			return self::$parse_cache[ $product_id ];
+		}
+
+		if ( '' === $product->get_price() ) {
+			self::$parse_cache[ $product_id ] = new WP_Error( 'wc_optic', __( 'This product has no unit price set.', 'wc-optic' ) );
+			return self::$parse_cache[ $product_id ];
 		}
 
 		$division = $product->get_meta( '_optic_division', true );
 		if ( ! $division ) {
-			return new WP_Error( 'wc_optic', __( 'This product is not configured for prescriptions.', 'wc-optic' ) );
+			self::$parse_cache[ $product_id ] = new WP_Error( 'wc_optic', __( 'This product is not configured for prescriptions.', 'wc-optic' ) );
+			return self::$parse_cache[ $product_id ];
 		}
 
 		$divisions  = WC_Optic_Plugin::get_divisions();
@@ -57,10 +87,12 @@ class WC_Optic_Cart {
 		$right = $same ? $left : self::parse_eye_powers( 'right', $powers_def );
 
 		if ( is_wp_error( $left ) ) {
-			return $left;
+			self::$parse_cache[ $product_id ] = $left;
+			return self::$parse_cache[ $product_id ];
 		}
 		if ( is_wp_error( $right ) ) {
-			return $right;
+			self::$parse_cache[ $product_id ] = $right;
+			return self::$parse_cache[ $product_id ];
 		}
 
 		$qty       = isset( $_POST['wc_optic_qty'] ) ? max( 1, (int) $_POST['wc_optic_qty'] ) : 1;
@@ -69,7 +101,8 @@ class WC_Optic_Cart {
 
 		if ( 'dual' === $qty_mode ) {
 			if ( $qty_left < 1 || $qty_right < 1 ) {
-				return new WP_Error( 'wc_optic', __( 'Please enter a valid quantity for each eye.', 'wc-optic' ) );
+				self::$parse_cache[ $product_id ] = new WP_Error( 'wc_optic', __( 'Please enter a valid quantity for each eye.', 'wc-optic' ) );
+				return self::$parse_cache[ $product_id ];
 			}
 			$line_qty = $qty_left + $qty_right;
 		} else {
@@ -78,7 +111,7 @@ class WC_Optic_Cart {
 
 		$labels = self::snapshot_catalog_labels( $product );
 
-		return array(
+		self::$parse_cache[ $product_id ] = array(
 			'division'     => $division,
 			'division_lbl' => isset( $divisions[ $division ] ) ? $divisions[ $division ]['label'] : $division,
 			'same_power'   => $same,
@@ -91,7 +124,10 @@ class WC_Optic_Cart {
 			'right'        => $right,
 			'catalog'      => $labels,
 			'product_id'   => $product_id,
+			'unit_price'   => WC_Optic_Pricing::get_unit_price( $product ),
 		);
+
+		return self::$parse_cache[ $product_id ];
 	}
 
 	/**

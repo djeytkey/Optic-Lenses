@@ -117,7 +117,7 @@ Vous avez déjà une base solide qui colle au PRD. Voici ce que montre le plugin
 
 **Stockage et compatibilité WooCommerce** — Produit classique + métas ; table personnalisée `wc_optic_catalog` pour le catalogue global ; déclaration explicite **non compatible HPOS** via `FeaturesUtil::declare_compatibility( 'custom_order_tables', …, false )`, ce qui correspond au « legacy only » du PRD.
 
-**Panier / commande** — Les données optiques passent par la clé `_wc_optic` dans les données de ligne panier, puis en commande (`_wc_optic_payload` + métas lisibles). Une seule ligne : en mode « quantité par œil », la quantité WooCommerce de la ligne est `left + right`, ce qui implémente bien **prix × (L + R)** sans classe `WC_Optic_Pricing` dédiée (le fichier existe mais est volontairement vide : la logique est portée par la quantité de ligne).
+**Panier / commande** — Les données optiques passent par la clé `_wc_optic` dans les données de ligne panier, puis en commande (`_wc_optic_payload` + métas lisibles). Une seule ligne : en mode « quantité par œil », la quantité WooCommerce de la ligne est `left + right`. **`WC_Optic_Pricing`** gère le filtre `woocommerce_add_to_cart_quantity`, le prix unitaire et le calcul du total ligne (`unit price × qty`).
 
 **Frontend** — Formulaire prescription, case « même puissance pour les deux yeux », bascule quantité unique / par œil, champ `quantity` masqué synchronisé en JS, validation côté serveur dans `WC_Optic_Cart::validate_add_to_cart` et `parse_eye_powers`.
 
@@ -691,4 +691,227 @@ Les signes **+** / **−** se gèrent dans les listes **SPH, CYL, AXIS, ADD** (n
 Les anciennes entrées `sign` et la méta produit `_optic_cat_sign` restent en base mais ne sont plus utilisées. Vous pouvez les supprimer manuellement ou les laisser ; elles n’impactent plus le plugin.
 
 Pensez à **réenregistrer** les produits optiques dont le SKU incluait un signe catalogue, pour recalculer le SKU sans ce segment.
+
+---
+
+**User**
+
+@wp-content/plugins/Optic-Lenses/cursor_woocommerce_optic_product_plugin.md take this transcript to continue plugin construction
+
+---
+
+**Cursor**
+
+Reprise du développement à partir du transcript. Côté boutique, le formulaire prescription utilisait déjà `get_powers_for_division()` ; le point restant était l’**admin produit**, où les 4 champs puissance SKU (SPH, CYL, AXIS, ADD) s’affichaient tous en permanence.
+
+---
+
+**User**
+
+pour les divisions, afficher uniquement les champs puissance correspondants dans l’admin produit
+
+---
+
+**Cursor**
+
+Implémentation de l’affichage conditionnel des champs SPH, CYL, AXIS et ADD dans l’admin produit selon la division sélectionnée.
+
+Voici ce qui a été modifié.
+
+## Admin produit (Optic configuration)
+
+Quand vous changez **Optical division**, seuls les champs puissance SKU correspondants restent visibles :
+
+| Division | Champs visibles |
+|----------|-----------------|
+| Color lenses | SPH |
+| SAMA Color Lenses | SPH, CYL, AXIS |
+| Astigmatism Toric | SPH, CYL, AXIS |
+| Multifocal Bifocal | SPH, ADD |
+
+- Les autres champs (CYL, AXIS, ADD, etc.) sont **masqués** et leur valeur est **vidée** automatiquement.
+- À l’enregistrement, les métas puissance non utilisées sont remises à **0**.
+- L’aperçu SKU et le SKU enregistré **ignorent** les puissances hors division.
+
+## Génération SKU
+
+`WC_Optic_SKU::build_for_product()` et `build_from_catalog_ids()` (preview AJAX) ne concatènent que les segments puissance autorisés pour la division du produit.
+
+## Fichiers modifiés
+
+- `includes/admin/class-wc-optic-admin-product.php` — classes CSS sur les champs puissance, texte d’aide, sauvegarde filtrée
+- `assets/js/admin-product.js` — affichage dynamique au changement de division
+- `includes/class-wc-optic-sku.php` — génération SKU selon la division
+- `includes/class-wc-optic-ajax.php` — preview SKU avec la division (`optic_division` en POST)
+- `assets/css/admin.css` — masquage par défaut des champs puissance (`.wc-optic-sku-power { display: none; }`)
+
+## Boutique
+
+Le formulaire prescription utilisait déjà `get_powers_for_division()` : le comportement côté client était déjà conforme au PRD.
+
+---
+
+**User**
+
+stretch selects to full width section, now they are smal
+
+---
+
+**Cursor**
+
+Les listes du panneau **Optic configuration** passent en pleine largeur.
+
+## Modifications
+
+- **`form-field-wide`** sur la division et tous les champs SKU (comportement WooCommerce : label au-dessus, select à 100 %).
+- **CSS** : conteneurs Select2 forcés à `width: 100%` dans `#optic_product_data_panel`.
+- **JS** : initialisation SelectWoo sur tous les `select.wc-enhanced-select` du panneau, y compris la division.
+
+## Fichiers modifiés
+
+- `includes/admin/class-wc-optic-admin-product.php` — `wrapper_class => form-field-wide`
+- `assets/css/admin.css` — styles pleine largeur Select2
+- `assets/js/admin-product.js` — `initSelectWoo()` + recalcul largeur après changement de division
+
+---
+
+**User**
+
+make them select2
+
+---
+
+**Cursor**
+
+Les listes du panneau **Optic configuration** utilisent maintenant **Select2** (SelectWoo WooCommerce) avec recherche.
+
+## Comportement
+
+- Champs en **Select2** : division + tous les composants SKU
+- **Recherche** toujours disponible (`minimumResultsForSearch: 0`) — utile pour les longues listes SPH/CYL/AXIS/ADD
+- **Placeholder** « — Select — » et bouton pour effacer la sélection (`allowClear: true`)
+- **Réinitialisation** quand vous ouvrez l’onglet Optic ou changez le type de produit (le panneau est masqué au chargement, ce qui bloquait l’init WooCommerce par défaut)
+- Champs puissance masqués : Select2 est détruit puis recréé quand la division les réaffiche
+
+## Fichiers modifiés
+
+- `includes/admin/class-wc-optic-admin-product.php` — classe `wc-optic-select2`, `data-placeholder`, script `wc-enhanced-select`
+- `assets/js/admin-product.js` — initialisation SelectWoo complète (`destroySelect2`, `initSelect2`, `getSelect2Language`)
+- `assets/css/admin.css` — style Select2 dans le panneau
+
+---
+
+**User**
+
+now let's add its singular price
+
+---
+
+**Cursor**
+
+Ajout du **prix unitaire** dans l’admin Optic, synchronisation avec le prix WooCommerce, et affichage du total estimé sur la fiche produit.
+
+## Admin — Optic configuration
+
+- Champ **Unit price** (prix unitaire / lentille), champ `_optic_unit_price`
+- Synchronisé avec le prix WooCommerce (`_regular_price` ; `_price` si pas de prix promo)
+- Les prix promo de l’onglet Général restent possibles ; le prix actif affiché au client inclut la promo
+
+## Boutique
+
+- Affichage **Unit price** et **Estimated total** dans le bloc `.wc-optic-pricing`
+- Le total se met à jour en JS quand la quantité change (simple ou par œil : L + R)
+- Paramètres de formatage passés via `wcOpticFront` (symbole devise, séparateurs, décimales)
+
+## Panier / commande
+
+- Total ligne = **prix unitaire × quantité** (WooCommerce standard)
+- `WC_Optic_Pricing::add_to_cart_quantity` — quantité ligne = quantité simple **ou** `OS + OD` en mode « quantité par œil »
+- Blocage add-to-cart si aucun prix unitaire n’est défini
+- Cache de parsing dans `WC_Optic_Cart::$parse_cache` + méthode publique `parse_request_for_product()` pour le pricing
+
+## Classe pricing
+
+`class-wc-optic-pricing.php` n’est plus vide :
+
+- `get_unit_price()` — prix actif (incl. promo)
+- `calculate_line_total()` — unit price × qty
+- `add_to_cart_quantity()` — filtre WooCommerce
+
+## Fichiers modifiés
+
+- `includes/admin/class-wc-optic-admin-product.php`
+- `includes/class-wc-optic-pricing.php`
+- `includes/class-wc-optic-cart.php`
+- `includes/class-wc-optic-frontend.php` — localisation `wcOpticFront`
+- `templates/single-product/add-to-cart/optic_product.php`
+- `assets/js/frontend.js` — `formatPrice()`, `updateLineTotal()`
+- `assets/css/frontend.css` — styles `.wc-optic-pricing`
+
+---
+
+**User**
+
+PHP Fatal error: class "WC_Optic_Database" not found on plugin activation
+
+---
+
+**Cursor**
+
+## Cause
+
+`register_activation_hook()` était configuré sur `array( 'WC_Optic_Database', 'activate' )`, mais **`WC_Optic_Database` n’était chargée que via l’autoloader**, enregistré dans `wc_optic_product_init()` sur `plugins_loaded`.
+
+À l’activation, WordPress exécute le callback **avant** `plugins_loaded` → la classe n’existait pas → callback invalide.
+
+## Correctif
+
+Chargement explicite de `includes/class-wc-optic-database.php` **avant** `register_activation_hook()` dans `woocommerce-optic-product.php` :
+
+```php
+require_once WC_OPTIC_PLUGIN_DIR . 'includes/class-wc-optic-autoload.php';
+// Activation runs before plugins_loaded; autoloader is not registered yet.
+require_once WC_OPTIC_PLUGIN_DIR . 'includes/class-wc-optic-database.php';
+
+register_activation_hook( __FILE__, array( 'WC_Optic_Database', 'activate' ) );
+```
+
+---
+
+## État actuel du plugin (synthèse post-modifications)
+
+### Catalogue global (`wc_optic_catalog`)
+
+Types actifs : **Sections, Companies, Brands, Timings, Colors, SPH, CYL, AXIS, ADD, Packs, Transparency** (plus de **Sign** ni **RX**).
+
+Chaque entrée : **Name**, **SKU fragment** (saisissable), **Sort**. Slug interne uniquement (via `WC_Optic_Catalog::sanitize_slug()`, conserve `+` et `-`).
+
+### SKU produit
+
+Format : `section + company + brand + timing + color + sph + cyl + axis + add + pack + transparency`
+
+Les segments puissance hors division sont vides. Fragment SKU prioritaire sur le nom (`catalog_term_sku_part()`).
+
+### Admin
+
+- **Optic Settings** : onglets par type, bouton **Add new**, sauvegarde en masse, suppression AJAX (icône poubelle) + journal `wp_wc_optic_catalog_deletion_log`
+- **Optic Import** : un onglet par type, template Name + SKU Fragment (ligne 1 = en-têtes, données à partir de la ligne 2)
+- **Optic configuration** (fiche produit) : division, prix unitaire, qty par œil par défaut, composants SKU en Select2 pleine largeur, champs puissance conditionnels, preview SKU live
+
+### Schéma BDD
+
+`wc_optic_db_schema` = **3** — migrations : v2 journal suppressions, v3 `axe` → `axis` (catalogue + `_optic_cat_axis`).
+
+### Boutique (frontend)
+
+- Prescription : champs texte par puissance de division (SPH, CYL, AXIS, ADD selon division)
+- Helper `WC_Optic_Frontend::render_power_select()` présent (listes catalogue SelectWoo) — **pas encore branché** dans `optic_product.php` ; les puissances client restent en saisie libre pour l’instant
+- Prix unitaire + total estimé dynamique
+- Quantité WooCommerce masquée, synchronisée en JS (`#wc_optic_line_quantity`)
+
+### À faire (prochaines étapes possibles)
+
+- Brancher les listes catalogue SPH/CYL/AXIS/ADD sur le formulaire prescription client (`render_power_select` + validation `get_valid_term` côté panier)
+- WPML : traduction des noms catalogue et libellés dynamiques
+- Migration automatique des anciennes données `term_type = rx` / `sign` si encore en base
 
