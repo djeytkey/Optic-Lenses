@@ -20,25 +20,35 @@ class WC_Optic_Deletion_Log {
 	 * @return array<int, array{id:int, name:string, edit_url:string}>
 	 */
 	public static function find_products_using_term( $term_type, $catalog_term_id ) {
-		if ( ! isset( WC_Optic_SKU::META_KEYS[ $term_type ] ) ) {
+		if ( ! isset( WC_Optic_SKU::INDEX_META_KEYS[ $term_type ] ) ) {
 			return array();
 		}
 
 		global $wpdb;
 
-		$meta_key = WC_Optic_SKU::META_KEYS[ $term_type ];
+		$new_meta_key = WC_Optic_SKU::INDEX_META_KEYS[ $term_type ];
+		$old_meta_key = isset( WC_Optic_SKU::META_KEYS[ $term_type ] ) ? WC_Optic_SKU::META_KEYS[ $term_type ] : '';
 		$value    = (string) absint( $catalog_term_id );
+		$like     = '%"' . $wpdb->esc_like( $value ) . '"%';
 
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$post_ids = $wpdb->get_col(
 			$wpdb->prepare(
 				"SELECT DISTINCT pm.post_id FROM {$wpdb->postmeta} pm
 				INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
-				WHERE pm.meta_key = %s AND pm.meta_value = %s
+				WHERE (
+					( pm.meta_key = %s AND ( pm.meta_value = %s OR pm.meta_value LIKE %s ) )
+					OR
+					( pm.meta_key = %s AND ( pm.meta_value = %s OR pm.meta_value LIKE %s ) )
+				)
 				AND p.post_type IN ( 'product', 'product_variation' )
 				AND p.post_status NOT IN ( 'trash', 'auto-draft' )",
-				$meta_key,
-				$value
+				$new_meta_key,
+				$value,
+				$like,
+				$old_meta_key,
+				$value,
+				$like
 			)
 		);
 		// phpcs:enable WordPress.DB.PreparedSQL.InterpolatedNotPrepared

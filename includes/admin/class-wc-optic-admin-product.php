@@ -66,22 +66,6 @@ class WC_Optic_Admin_Product {
 			)
 		);
 
-		woocommerce_wp_text_input(
-			array(
-				'id'                => '_optic_unit_price',
-				'label'             => __( 'Unit price', 'wc-optic' ),
-				'description'       => __( 'Price per lens/unit. Cart line total = unit price × quantity (or × left + right quantities when quantity per eye is enabled). Synced to the WooCommerce product price.', 'wc-optic' ),
-				'value'             => $product->get_regular_price( 'edit' ),
-				'class'             => 'wc_input_price short',
-				'wrapper_class'     => 'form-field-wide',
-				'data_type'         => 'price',
-				'custom_attributes' => array(
-					'step' => 'any',
-					'min'  => '0',
-				),
-			)
-		);
-
 		woocommerce_wp_checkbox(
 			array(
 				'id'          => '_optic_default_qty_per_eye',
@@ -91,46 +75,48 @@ class WC_Optic_Admin_Product {
 			)
 		);
 
-		echo '<p class="form-field"><strong>' . esc_html__( 'SKU components', 'wc-optic' ) . '</strong></p>';
-		echo '<p class="form-field wc-optic-sku-powers-hint description">';
-		echo esc_html__( 'Power fields (SPH, CYL, AXIS, ADD) depend on the optical division selected above.', 'wc-optic' );
-		echo '</p>';
-
-		$power_types = WC_Optic_Catalog::get_power_types();
-
-		foreach ( WC_Optic_SKU::META_KEYS as $type => $meta_key ) {
-			$label = self::type_label( $type );
-			$rows  = WC_Optic_Catalog::get_terms( $type );
-			$opts  = array( '' => __( '— Select —', 'wc-optic' ) );
-			foreach ( $rows as $row ) {
-				$opts[ $row->id ] = $row->name;
-			}
-
-			$wrapper_class = 'wc-optic-sku-field form-field-wide';
-			if ( in_array( $type, $power_types, true ) ) {
-				$wrapper_class .= ' wc-optic-sku-power';
-			}
-
-			woocommerce_wp_select(
+		$division      = (string) $product->get_meta( '_optic_division', true );
+		$child_configs = WC_Optic_SKU::get_child_configs( $product );
+		if ( empty( $child_configs ) ) {
+			$child_configs[] = WC_Optic_SKU::normalize_child_config(
 				array(
-					'id'            => $meta_key,
-					'label'         => $label,
-					'options'       => $opts,
-					'value'         => $product->get_meta( $meta_key, true ),
-					'class'             => 'wc-enhanced-select wc-optic-select2 wc-optic-catalog-select',
-					'wrapper_class'     => $wrapper_class,
-					'custom_attributes' => array(
-						'data-optic-type'  => $type,
-						'data-placeholder' => __( '— Select —', 'wc-optic' ),
-					),
-				)
+					'enabled' => true,
+				),
+				$division,
+				0
 			);
 		}
 
-		echo '<p class="form-field">';
-		echo '<label>' . esc_html__( 'Live SKU preview', 'wc-optic' ) . '</label>';
-		echo '<code id="wc-optic-admin-sku-preview" style="display:block;padding:8px;background:#f6f7f7;"></code>';
+		echo '<div class="wc-optic-child-configs">';
+		echo '<p class="form-field"><strong>' . esc_html__( 'Internal products', 'wc-optic' ) . '</strong></p>';
+		echo '<p class="form-field wc-optic-sku-powers-hint description">';
+		echo esc_html__( 'Create one internal product per sellable power combination. Each internal product gets its own price and SKU.', 'wc-optic' );
 		echo '</p>';
+		echo '<div id="wc-optic-child-config-list">';
+		foreach ( array_values( $child_configs ) as $index => $config ) {
+			self::render_child_config_block( $config, (string) $index, $division );
+		}
+		echo '</div>';
+		echo '<p class="wc-optic-child-actions">';
+		echo '<button type="button" class="button button-secondary" id="wc-optic-add-child">+</button> ';
+		echo '<span class="description">' . esc_html__( 'Add another internal product.', 'wc-optic' ) . '</span>';
+		echo '</p>';
+		echo '</div>';
+
+		echo '<script type="text/html" id="wc-optic-child-config-template">';
+		self::render_child_config_block(
+			WC_Optic_SKU::normalize_child_config(
+				array(
+					'enabled' => true,
+				),
+				$division,
+				0
+			),
+			'__INDEX__',
+			$division,
+			true
+		);
+		echo '</script>';
 
 		echo '</div>';
 	}
@@ -179,26 +165,10 @@ class WC_Optic_Admin_Product {
 		$product->update_meta_data( '_optic_division', $division );
 		$product->update_meta_data( '_optic_default_qty_per_eye', isset( $_POST['_optic_default_qty_per_eye'] ) ? 'yes' : 'no' );
 
-		if ( isset( $_POST['_optic_unit_price'] ) ) {
-			$unit_price = wc_format_decimal( wp_unslash( $_POST['_optic_unit_price'] ) );
-			$product->set_regular_price( $unit_price );
-			if ( '' === $product->get_sale_price( 'edit' ) ) {
-				$product->set_price( $unit_price );
-			}
-		}
+		$raw_children = isset( $_POST['_optic_child_configs'] ) && is_array( $_POST['_optic_child_configs'] ) ? wp_unslash( $_POST['_optic_child_configs'] ) : array();
+		$children     = WC_Optic_SKU::normalize_child_configs( $raw_children, $division );
 
-		$allowed_powers = $division ? WC_Optic_Plugin::get_powers_for_division( $division ) : array();
-		$power_types    = WC_Optic_Catalog::get_power_types();
-
-		foreach ( WC_Optic_SKU::META_KEYS as $type => $meta_key ) {
-			if ( in_array( $type, $power_types, true ) && ! in_array( $type, $allowed_powers, true ) ) {
-				$product->update_meta_data( $meta_key, 0 );
-				continue;
-			}
-			$val = isset( $_POST[ $meta_key ] ) ? absint( wp_unslash( $_POST[ $meta_key ] ) ) : 0;
-			$product->update_meta_data( $meta_key, $val );
-		}
-
+		WC_Optic_SKU::persist_child_data( $product, $children );
 		WC_Optic_SKU::sync_product_sku( $product );
 	}
 
@@ -242,11 +212,125 @@ class WC_Optic_Admin_Product {
 			'wc-optic-admin-product',
 			'wcOpticAdmin',
 			array(
-				'ajaxUrl'         => admin_url( 'admin-ajax.php' ),
-				'nonce'           => wp_create_nonce( 'wc_optic_admin' ),
-				'divisionPowers'  => $division_powers,
-				'powerTypes'      => WC_Optic_Catalog::get_power_types(),
+				'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
+				'nonce'          => wp_create_nonce( 'wc_optic_admin' ),
+				'divisionPowers' => $division_powers,
+				'powerTypes'     => WC_Optic_Catalog::get_power_types(),
+				'i18n'           => array(
+					'product' => __( 'Product', 'wc-optic' ),
+					'remove'  => __( 'Remove', 'wc-optic' ),
+				),
 			)
 		);
+	}
+
+	/**
+	 * Render one repeatable child config block.
+	 *
+	 * @param array  $config      Child config.
+	 * @param string $index_token Field index token.
+	 * @param string $division    Parent division.
+	 * @param bool   $is_template Template mode.
+	 */
+	protected static function render_child_config_block( array $config, $index_token, $division, $is_template = false ) {
+		$power_types = WC_Optic_Catalog::get_power_types();
+		$title       = ! empty( $config['label'] ) ? (string) $config['label'] : __( 'Product', 'wc-optic' );
+
+		echo '<div class="wc-optic-child-config" data-child-index="' . esc_attr( $index_token ) . '">';
+		echo '<div class="wc-optic-child-config__header">';
+		echo '<h4 class="wc-optic-child-config__title">' . esc_html( $title ) . '</h4>';
+		echo '<button type="button" class="button-link-delete wc-optic-remove-child">' . esc_html__( 'Remove', 'wc-optic' ) . '</button>';
+		echo '</div>';
+
+		echo '<input type="hidden" class="wc-optic-child-id" name="' . esc_attr( '_optic_child_configs[' . $index_token . '][id]' ) . '" value="' . esc_attr( (string) ( $config['id'] ?? '' ) ) . '" />';
+		echo '<input type="hidden" class="wc-optic-child-sort" name="' . esc_attr( '_optic_child_configs[' . $index_token . '][sort]' ) . '" value="' . esc_attr( (string) ( $config['sort'] ?? 0 ) ) . '" />';
+
+		echo '<p class="form-field form-field-wide wc-optic-child-enabled">';
+		echo '<label>';
+		echo '<input type="checkbox" name="' . esc_attr( '_optic_child_configs[' . $index_token . '][enabled]' ) . '" value="1" ' . checked( ! empty( $config['enabled'] ), true, false ) . ' />';
+		echo ' ' . esc_html__( 'Enabled', 'wc-optic' );
+		echo '</label>';
+		echo '</p>';
+
+		self::render_child_text_input(
+			'_optic_child_configs[' . $index_token . '][label]',
+			'wc_optic_child_' . $index_token . '_label',
+			__( 'Label', 'wc-optic' ),
+			(string) ( $config['label'] ?? '' ),
+			'wc-optic-child-label'
+		);
+
+		self::render_child_text_input(
+			'_optic_child_configs[' . $index_token . '][unit_price]',
+			'wc_optic_child_' . $index_token . '_unit_price',
+			__( 'Unit price', 'wc-optic' ),
+			(string) ( $config['unit_price'] ?? '' ),
+			'wc-optic-child-unit-price wc_input_price'
+		);
+
+		echo '<div class="wc-optic-child-fields-grid">';
+		foreach ( WC_Optic_SKU::META_KEYS as $type => $meta_key ) {
+			$value = in_array( $type, $power_types, true ) ? (int) ( $config['powers'][ $type ] ?? 0 ) : (int) ( $config['catalog'][ $type ] ?? 0 );
+			self::render_child_select_field(
+				$index_token,
+				$type,
+				$value,
+				in_array( $type, $power_types, true ),
+				$division
+			);
+		}
+		echo '</div>';
+
+		echo '<p class="form-field form-field-wide wc-optic-child-sku">';
+		echo '<label>' . esc_html__( 'SKU preview', 'wc-optic' ) . '</label>';
+		echo '<code class="wc-optic-child-sku-preview">' . esc_html( (string) ( $config['sku'] ?? '' ) ) . '</code>';
+		echo '</p>';
+
+		echo '</div>';
+	}
+
+	/**
+	 * Render child text input.
+	 *
+	 * @param string $name  Field name.
+	 * @param string $id    Field id.
+	 * @param string $label Label.
+	 * @param string $value Value.
+	 * @param string $class CSS classes.
+	 */
+	protected static function render_child_text_input( $name, $id, $label, $value, $class = '' ) {
+		echo '<p class="form-field form-field-wide">';
+		echo '<label for="' . esc_attr( $id ) . '">' . esc_html( $label ) . '</label>';
+		echo '<input type="text" class="' . esc_attr( $class ) . '" name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '" value="' . esc_attr( $value ) . '" />';
+		echo '</p>';
+	}
+
+	/**
+	 * Render one catalog select inside a child block.
+	 *
+	 * @param string $index_token Field index token.
+	 * @param string $type        Catalog type.
+	 * @param int    $selected    Selected id.
+	 * @param bool   $is_power    Whether field is a power.
+	 * @param string $division    Parent division.
+	 */
+	protected static function render_child_select_field( $index_token, $type, $selected, $is_power, $division ) {
+		$name = $is_power ? '_optic_child_configs[' . $index_token . '][powers][' . $type . ']' : '_optic_child_configs[' . $index_token . '][catalog][' . $type . ']';
+		$id   = 'wc_optic_child_' . $index_token . '_' . $type;
+
+		$wrapper = 'form-field form-field-wide wc-optic-child-field';
+		if ( $is_power ) {
+			$wrapper .= ' wc-optic-child-power';
+		}
+
+		echo '<p class="' . esc_attr( $wrapper ) . '" data-optic-type="' . esc_attr( $type ) . '">';
+		echo '<label for="' . esc_attr( $id ) . '">' . esc_html( self::type_label( $type ) ) . '</label>';
+		echo '<select name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '" class="wc-enhanced-select wc-optic-select2 wc-optic-child-select" data-optic-type="' . esc_attr( $type ) . '" data-is-power="' . esc_attr( $is_power ? '1' : '0' ) . '" data-placeholder="' . esc_attr__( '- Select -', 'wc-optic' ) . '">';
+		echo '<option value=""></option>';
+		foreach ( WC_Optic_Catalog::get_terms( $type ) as $row ) {
+			echo '<option value="' . esc_attr( (string) $row->id ) . '" ' . selected( (int) $selected, (int) $row->id, false ) . '>' . esc_html( $row->name ) . '</option>';
+		}
+		echo '</select>';
+		echo '</p>';
 	}
 }

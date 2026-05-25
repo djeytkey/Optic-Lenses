@@ -83,6 +83,8 @@ class WC_Optic_Admin_Settings {
 			return;
 		}
 
+		self::handle_global_settings_save();
+
 		$requested = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'section'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( 'deletion_log' === $requested ) {
 			$active = 'deletion_log';
@@ -98,6 +100,7 @@ class WC_Optic_Admin_Settings {
 
 		echo '<div class="wrap woocommerce" id="wc-optic-settings-root" data-active-tab="' . esc_attr( $active ) . '">';
 		echo '<h1>' . esc_html__( 'Optic Settings', 'wc-optic' ) . '</h1>';
+		self::render_global_settings_panel();
 		echo '<h2 class="nav-tab-wrapper">';
 		foreach ( WC_Optic_Catalog::TYPES as $type ) {
 			$url   = admin_url( 'admin.php?page=wc-optic-settings&tab=' . $type );
@@ -149,6 +152,28 @@ class WC_Optic_Admin_Settings {
 		echo '</form>';
 
 		echo '</div>';
+	}
+
+	/**
+	 * Render global optic settings shared by all products.
+	 */
+	protected static function render_global_settings_panel() {
+		echo '<form method="post" action="" class="wc-optic-global-settings">';
+		wp_nonce_field( 'wc_optic_global_settings_save', 'wc_optic_global_settings_nonce' );
+		echo '<div class="notice inline wc-optic-global-settings-box">';
+		echo '<p><strong>' . esc_html__( 'Global storefront settings', 'wc-optic' ) . '</strong></p>';
+		echo '<p class="description">' . esc_html__( 'These settings affect all optic products in the shop.', 'wc-optic' ) . '</p>';
+		echo '<p class="form-field">';
+		echo '<label for="wc_optic_global_selector_ui"><strong>' . esc_html__( 'Child selector UI', 'wc-optic' ) . '</strong></label><br />';
+		echo '<select name="wc_optic_global_selector_ui" id="wc_optic_global_selector_ui">';
+		foreach ( WC_Optic_SKU::get_selector_ui_options() as $value => $label ) {
+			echo '<option value="' . esc_attr( $value ) . '" ' . selected( WC_Optic_SKU::get_selector_ui(), $value, false ) . '>' . esc_html( $label ) . '</option>';
+		}
+		echo '</select>';
+		echo '</p>';
+		echo '<p><button type="submit" class="button button-secondary">' . esc_html__( 'Save global settings', 'wc-optic' ) . '</button></p>';
+		echo '</div>';
+		echo '</form>';
 	}
 
 	/**
@@ -368,6 +393,40 @@ class WC_Optic_Admin_Settings {
 					);
 					echo '</p></div>';
 				}
+			}
+		);
+	}
+
+	/**
+	 * Save global settings shared by all optic products.
+	 */
+	protected static function handle_global_settings_save() {
+		if ( empty( $_POST['wc_optic_global_settings_nonce'] ) ) {
+			return;
+		}
+
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['wc_optic_global_settings_nonce'] ) ), 'wc_optic_global_settings_save' ) ) {
+			return;
+		}
+
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			return;
+		}
+
+		$selector_ui = isset( $_POST['wc_optic_global_selector_ui'] ) ? WC_Optic_SKU::set_selector_ui( wp_unslash( $_POST['wc_optic_global_selector_ui'] ) ) : WC_Optic_SKU::get_selector_ui();
+
+		add_action(
+			'admin_notices',
+			function () use ( $selector_ui ) {
+				echo '<div class="notice notice-success is-dismissible"><p>';
+				echo esc_html(
+					sprintf(
+						/* translators: %s: selector mode */
+						__( 'Global optic selector UI saved: %s.', 'wc-optic' ),
+						$selector_ui
+					)
+				);
+				echo '</p></div>';
 			}
 		);
 	}

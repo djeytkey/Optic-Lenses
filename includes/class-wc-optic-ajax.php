@@ -105,15 +105,11 @@ class WC_Optic_Ajax {
 			$division = '';
 		}
 
-		$catalog_ids = array();
-		foreach ( WC_Optic_SKU::META_KEYS as $type => $meta_key ) {
-			$key                 = 'cat_' . $type;
-			$catalog_ids[ $type ] = isset( $_POST[ $key ] ) ? absint( $_POST[ $key ] ) : 0;
-		}
+		$child_config = isset( $_POST['child_config'] ) && is_array( $_POST['child_config'] ) ? wp_unslash( $_POST['child_config'] ) : array();
 
 		wp_send_json_success(
 			array(
-				'sku' => WC_Optic_SKU::build_from_catalog_ids( $catalog_ids, $division ),
+				'sku' => WC_Optic_SKU::build_from_catalog_ids( $child_config, $division ),
 			)
 		);
 	}

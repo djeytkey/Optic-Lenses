@@ -5,28 +5,67 @@
 .wc-optic-cart-form .wc-optic-fieldset {
 	border: 0;
 	padding: 0;
-	margin: 0 0 1em;
+	margin: 0;
+}
+
+.wc-optic-config-card {
+	margin: 0 0 1.25em;
+	padding: 1rem;
+	border: 1px solid #e2e8f0;
+	border-radius: 8px;
+	background: #fff;
+}
+
+.wc-optic-config-table {
+	display: grid;
+	gap: 1rem;
+}
+
+.wc-optic-config-table__header {
+	display: grid;
+	grid-template-columns: minmax(120px, 180px) minmax(0, 1fr) minmax(0, 1fr);
+	gap: 1rem;
+	align-items: end;
+	padding-bottom: 0.5rem;
+	border-bottom: 1px solid #e5e7eb;
+}
+
+.wc-optic-config-table__eye {
+	font-weight: 600;
+}
+
+.wc-optic-config-table__row {
+	display: grid;
+	grid-template-columns: minmax(120px, 180px) minmax(0, 1fr);
+	gap: 1rem;
+	align-items: start;
+}
+
+.wc-optic-config-table__label {
+	padding-top: 0.35rem;
 }
 
 .wc-optic-eyes--stack {
-	display: flex;
-	flex-wrap: wrap;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 	gap: 1.5rem;
 }
 
 /* RTL: OD column first in reading order (DOM is OS then OD) */
 .rtl .wc-optic-eyes--stack {
-	flex-direction: row-reverse;
+	direction: rtl;
 }
 
 .wc-optic-eye {
-	min-width: 12rem;
+	min-width: 0;
 }
 
 .wc-optic-eye-title {
 	display: block;
 	font-weight: 600;
-	margin-bottom: 0.5rem;
+	margin-bottom: 0.35rem;
+	font-size: 0.95em;
+	color: #6b7280;
 }
 
 .wc-optic-ltr {
@@ -38,8 +77,113 @@
 	min-width: 3.5rem;
 }
 
+.wc-optic-child-selector {
+	margin-top: 0;
+}
+
+.wc-optic-eye-selector-label {
+	display: none;
+}
+
+.wc-optic-child-dropdown,
+.wc-optic-child-selector .select2-container {
+	width: 100% !important;
+}
+
+.wc-optic-child-selector .select2-selection--single {
+	min-height: 38px;
+}
+
+.wc-optic-child-selector .select2-selection__rendered {
+	line-height: 36px !important;
+}
+
+.wc-optic-child-radio-list {
+	display: grid;
+	gap: 0.75rem;
+}
+
+.wc-optic-child-choice {
+	display: flex;
+	gap: 0.75rem;
+	padding: 0.75rem;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	cursor: pointer;
+	align-items: stretch;
+}
+
+.wc-optic-child-choice > input[type="radio"] {
+	align-self: center;
+	margin-top: 0;
+}
+
+.wc-optic-child-choice__content {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.wc-optic-child-choice__powers {
+	font-weight: 600;
+}
+
+.wc-optic-child-choice__powers-list {
+	margin: 0;
+	padding: 0;
+}
+
+.wc-optic-child-choice__power-item {
+	list-style: none;
+	margin: 0 0 0.2rem;
+}
+
+.wc-optic-child-choice__meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	font-size: 0.95em;
+	color: #50575e;
+}
+
+.wc-optic-child-choice__price {
+	font-weight: 600;
+}
+
+.wc-optic-no-terms {
+	display: block;
+	color: #b32d2e;
+}
+
 .wc-optic-toggle {
 	margin: 0.75em 0;
+}
+
+.wc-optic-toggle--question {
+	margin-top: 0;
+	margin-bottom: 1rem;
+}
+
+.wc-optic-toggle--question label {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.wc-optic-qty--single input,
+.wc-optic-qty--dual input {
+	max-width: 120px;
+}
+
+.wc-optic-qty--dual {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 1rem;
+}
+
+.wc-optic-qty--dual .form-row {
+	margin: 0;
 }
 
 .wc-optic-notice {
@@ -59,4 +203,70 @@
 
 .wc-optic-line-total {
 	font-size: 1.05em;
+}
+
+.wc-optic-cart-eye-prices {
+	display: grid;
+	gap: 0.25rem;
+}
+
+.wc-optic-cart-eye-price {
+	display: block;
+}
+
+.wc-optic-cart-qty {
+	display: grid;
+	gap: 0.5rem;
+}
+
+.wc-optic-cart-qty > span {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 0.25rem;
+}
+
+.wc-optic-cart-qty label {
+	display: block;
+	margin: 0;
+	font-weight: 600;
+}
+
+.wc-optic-cart-qty input[type="number"] {
+	max-width: 110px;
+}
+
+@media (max-width: 768px) {
+	.wc-optic-config-table__header {
+		display: none;
+	}
+
+	.wc-optic-config-table__row {
+		grid-template-columns: 1fr;
+		gap: 0.5rem;
+	}
+
+	.wc-optic-config-table__label {
+		padding-top: 0;
+	}
+
+	.wc-optic-eyes--stack,
+	.wc-optic-qty--dual {
+		grid-template-columns: 1fr;
+		gap: 1rem;
+	}
+
+	.wc-optic-eye-title,
+	.wc-optic-eye-selector-label {
+		display: block;
+	}
+}
+
+.wc-optic-child-choice__powers-list {
+	margin: 0;
+}
+
+li.wc-optic-child-choice__power-item {
+    list-style: none;
+    font-weight: 400;
 }
