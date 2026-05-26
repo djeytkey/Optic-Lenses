@@ -23,6 +23,38 @@ class WC_Product_Optic_Product extends WC_Product {
 	}
 
 	/**
+	 * Whether this optic product has exactly one purchasable internal product.
+	 *
+	 * @return bool
+	 */
+	protected function has_single_purchasable_child() {
+		return 1 === count( WC_Optic_SKU::get_purchasable_child_configs( $this ) );
+	}
+
+	/**
+	 * Whether this optic product has more than one purchasable internal product.
+	 *
+	 * @return bool
+	 */
+	protected function has_multiple_purchasable_children() {
+		return count( WC_Optic_SKU::get_purchasable_child_configs( $this ) ) > 1;
+	}
+
+	/**
+	 * Supported product features.
+	 *
+	 * @param string $feature Feature name.
+	 * @return bool
+	 */
+	public function supports( $feature ) {
+		if ( 'ajax_add_to_cart' === $feature ) {
+			return $this->has_single_purchasable_child() && $this->is_purchasable() && WC_Optic_Frontend::product_is_in_stock( $this );
+		}
+
+		return parent::supports( $feature );
+	}
+
+	/**
 	 * Product type key.
 	 *
 	 * @return string
@@ -37,7 +69,8 @@ class WC_Product_Optic_Product extends WC_Product {
 	 * @return string
 	 */
 	public function add_to_cart_url() {
-		$url = $this->is_purchasable() && $this->is_in_stock() ? remove_query_arg(
+		$can_add_directly = $this->has_single_purchasable_child() && $this->is_purchasable() && WC_Optic_Frontend::product_is_in_stock( $this );
+		$url              = $can_add_directly ? remove_query_arg(
 			'added-to-cart',
 			add_query_arg(
 				array(
@@ -55,7 +88,14 @@ class WC_Product_Optic_Product extends WC_Product {
 	 * @return string
 	 */
 	public function add_to_cart_text() {
-		$text = $this->is_purchasable() && $this->is_in_stock() ? __( 'Add to cart', 'woocommerce' ) : __( 'Read more', 'woocommerce' );
+		if ( $this->has_single_purchasable_child() && $this->is_purchasable() && WC_Optic_Frontend::product_is_in_stock( $this ) ) {
+			$text = __( 'Add to cart', 'woocommerce' );
+		} elseif ( $this->has_multiple_purchasable_children() ) {
+			$text = __( 'Choisir une option', 'wc-optic' );
+		} else {
+			$text = __( 'Read more', 'woocommerce' );
+		}
+
 		return apply_filters( 'woocommerce_product_add_to_cart_text', $text, $this );
 	}
 
@@ -65,11 +105,17 @@ class WC_Product_Optic_Product extends WC_Product {
 	 * @return string
 	 */
 	public function add_to_cart_description() {
-		$text = $this->is_purchasable() && $this->is_in_stock()
+		if ( $this->has_single_purchasable_child() && $this->is_purchasable() && WC_Optic_Frontend::product_is_in_stock( $this ) ) {
 			/* translators: %s: product title */
-			? __( 'Add to cart: &ldquo;%s&rdquo;', 'woocommerce' )
+			$text = __( 'Add to cart: &ldquo;%s&rdquo;', 'woocommerce' );
+		} elseif ( $this->has_multiple_purchasable_children() ) {
 			/* translators: %s: product title */
-			: __( 'Read more about &ldquo;%s&rdquo;', 'woocommerce' );
+			$text = __( 'Choose options for &ldquo;%s&rdquo;', 'woocommerce' );
+		} else {
+			/* translators: %s: product title */
+			$text = __( 'Read more about &ldquo;%s&rdquo;', 'woocommerce' );
+		}
+
 		return apply_filters( 'woocommerce_product_add_to_cart_description', sprintf( $text, $this->get_name() ), $this );
 	}
 }

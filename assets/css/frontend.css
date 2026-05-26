@@ -113,6 +113,11 @@
 	align-items: stretch;
 }
 
+.wc-optic-child-choice.is-out-of-stock {
+	opacity: 0.65;
+	cursor: not-allowed;
+}
+
 .wc-optic-child-choice > input[type="radio"] {
 	align-self: center;
 	margin-top: 0;
@@ -151,6 +156,15 @@
 	font-weight: 600;
 }
 
+.wc-optic-child-choice__stock {
+	font-weight: 500;
+	color: #2271b1;
+}
+
+.wc-optic-child-choice__stock.is-out-of-stock {
+	color: #b32d2e;
+}
+
 .wc-optic-no-terms {
 	display: block;
 	color: #b32d2e;
@@ -163,6 +177,8 @@
 .wc-optic-toggle--question {
 	margin-top: 0;
 	margin-bottom: 1rem;
+	padding-bottom: 0.75rem;
+	border-bottom: 1px solid #e5e7eb;
 }
 
 .wc-optic-toggle--question label {

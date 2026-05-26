@@ -50,6 +50,26 @@
 		return 0;
 	}
 
+	function getEyeFieldStock( eye ) {
+		var $container = getEyeContainer( eye );
+		var $radio = $container.find( 'input[type="radio"][name="wc_optic_' + eye + '_child"]:checked' );
+		if ( $radio.length ) {
+			if ( $radio.data( 'stock' ) === '' || typeof $radio.data( 'stock' ) === 'undefined' ) {
+				return null;
+			}
+			return parseInt( $radio.data( 'stock' ), 10 ) || 0;
+		}
+		var $select = $container.find( 'select[name="wc_optic_' + eye + '_child"]' );
+		if ( $select.length ) {
+			var stock = $select.find( 'option:selected' ).data( 'stock' );
+			if ( stock === '' || typeof stock === 'undefined' ) {
+				return null;
+			}
+			return parseInt( stock, 10 ) || 0;
+		}
+		return null;
+	}
+
 	function setEyeFieldValue( eye, value ) {
 		var $container = getEyeContainer( eye );
 		var $radio = $container.find( 'input[type="radio"][name="wc_optic_' + eye + '_child"]' );
@@ -130,6 +150,37 @@
 		updateLineTotal();
 	}
 
+	function applyMaxValue( $input, maxValue ) {
+		if ( ! $input.length ) {
+			return;
+		}
+
+		if ( maxValue === null || typeof maxValue === 'undefined' ) {
+			$input.removeAttr( 'max' );
+			return;
+		}
+
+		maxValue = Math.max( 1, parseInt( maxValue, 10 ) || 1 );
+		$input.attr( 'max', maxValue );
+
+		var current = parseInt( $input.val(), 10 ) || 1;
+		if ( current > maxValue ) {
+			$input.val( maxValue );
+		}
+	}
+
+	function syncQuantityStockLimits() {
+		var different = $( '#wc_optic_different_power' ).is( ':checked' );
+		if ( different ) {
+			applyMaxValue( $( '#wc_optic_qty_left' ), getEyeFieldStock( 'left' ) );
+			applyMaxValue( $( '#wc_optic_qty_right' ), getEyeFieldStock( 'right' ) );
+			$( '#wc_optic_qty' ).removeAttr( 'max' );
+		} else {
+			applyMaxValue( $( '#wc_optic_qty' ), getEyeFieldStock( 'left' ) );
+			$( '#wc_optic_qty_left, #wc_optic_qty_right' ).removeAttr( 'max' );
+		}
+	}
+
 	function updateLineTotal() {
 		var $wrap = $( '.wc-optic-pricing' );
 		var $display = $( '#wc_optic_line_total_display' );
@@ -174,6 +225,7 @@
 			$dualQty.prop( 'hidden', false );
 			initChildDropdowns( $right );
 		}
+		syncQuantityStockLimits();
 		syncLineQuantity();
 		updateLineTotal();
 	}
@@ -186,6 +238,7 @@
 
 		initChildDropdowns( $form );
 		toggleSamePower();
+		syncQuantityStockLimits();
 		syncLineQuantity();
 
 		$( '#wc_optic_different_power' ).on( 'change', toggleSamePower );
@@ -194,6 +247,8 @@
 			if ( ! $( '#wc_optic_different_power' ).is( ':checked' ) && $( this ).attr( 'name' ) === 'wc_optic_left_child' ) {
 				syncRightChildFromLeft();
 			}
+			syncQuantityStockLimits();
+			syncLineQuantity();
 			updateLineTotal();
 		} );
 

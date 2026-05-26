@@ -20,15 +20,17 @@ $powers     = WC_Optic_Plugin::get_powers_for_division( $division );
 $divisions  = WC_Optic_Plugin::get_divisions();
 $div_label  = isset( $divisions[ $division ] ) ? $divisions[ $division ]['label'] : $division;
 $children   = WC_Optic_Frontend::get_storefront_child_configs( $product );
+$buyable_children     = WC_Optic_SKU::get_purchasable_child_configs( $product );
+$can_choose_different = count( $buyable_children ) > 1;
 
 if ( ! WC_Optic_Frontend::has_child_options( $product ) ) {
 	echo '<p class="wc-optic-notice">' . esc_html__( 'This product is not ready for sale yet. Please configure its internal products in the product admin.', 'wc-optic' ) . '</p>';
 	return;
 }
 
-echo wc_get_stock_html( $product ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+echo WC_Optic_Frontend::get_stock_html( $product ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 
-if ( ! $product->is_in_stock() ) {
+if ( ! WC_Optic_Frontend::product_is_in_stock( $product ) ) {
 	return;
 }
 
@@ -44,7 +46,8 @@ do_action( 'woocommerce_before_add_to_cart_form' );
 	</p>
 
 	<?php
-	$initial_unit_price = ! empty( $children[0] ) ? WC_Optic_SKU::get_child_unit_price( $children[0] ) : 0;
+	$initial_child      = ! empty( $buyable_children[0] ) ? $buyable_children[0] : ( ! empty( $children[0] ) ? $children[0] : array() );
+	$initial_unit_price = ! empty( $initial_child ) ? WC_Optic_SKU::get_child_unit_price( $initial_child ) : 0;
 	if ( $initial_unit_price > 0 ) :
 		$initial_qty   = 1;
 		$initial_total = WC_Optic_Pricing::calculate_line_total( $initial_unit_price, $initial_qty );
@@ -62,24 +65,16 @@ do_action( 'woocommerce_before_add_to_cart_form' );
 	<?php endif; ?>
 
 	<div class="wc-optic-config-card">
-		<p class="wc-optic-toggle wc-optic-toggle--question">
-			<label for="wc_optic_different_power">
-				<input type="checkbox" name="wc_optic_different_power" value="1" id="wc_optic_different_power" />
-				<strong><?php esc_html_e( 'Need 2 Different Powers?', 'wc-optic' ); ?></strong>
-			</label>
-		</p>
+		<?php if ( $can_choose_different ) : ?>
+			<p class="wc-optic-toggle wc-optic-toggle--question">
+				<label for="wc_optic_different_power">
+					<input type="checkbox" name="wc_optic_different_power" value="1" id="wc_optic_different_power" />
+					<strong><?php esc_html_e( 'Need 2 Different Powers?', 'wc-optic' ); ?></strong>
+				</label>
+			</p>
+		<?php endif; ?>
 
 		<div class="wc-optic-config-table">
-			<div class="wc-optic-config-table__header">
-				<div class="wc-optic-config-table__label"></div>
-				<div class="wc-optic-config-table__eye wc-optic-config-table__eye--left">
-					<?php esc_html_e( 'Left Eye', 'wc-optic' ); ?>
-				</div>
-				<div class="wc-optic-config-table__eye wc-optic-config-table__eye--right" hidden>
-					<?php esc_html_e( 'Right Eye', 'wc-optic' ); ?>
-				</div>
-			</div>
-
 			<div class="wc-optic-config-table__row">
 				<div class="wc-optic-config-table__label">
 					<strong><?php esc_html_e( 'Prescription', 'wc-optic' ); ?></strong>

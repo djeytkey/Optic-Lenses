@@ -3,6 +3,7 @@
 
 	var $panel = null;
 	var childIndexCounter = 0;
+	var copiedCatalogTypes = [ 'section', 'company', 'brand', 'timing', 'color' ];
 
 	function getPanel() {
 		if ( ! $panel || ! $panel.length ) {
@@ -207,6 +208,31 @@
 		refreshBlockSkuPreview( $block );
 	}
 
+	function copyCatalogValuesFromFirstChild( $targetBlock ) {
+		var $blocks = getChildBlocks();
+		var $sourceBlock = $blocks.first();
+
+		if (
+			! $targetBlock ||
+			! $targetBlock.length ||
+			! $sourceBlock.length ||
+			$sourceBlock.is( $targetBlock )
+		) {
+			return;
+		}
+
+		$.each( copiedCatalogTypes, function ( _, type ) {
+			var $source = $sourceBlock.find( 'select.wc-optic-child-select[data-optic-type="' + type + '"]' );
+			var $target = $targetBlock.find( 'select.wc-optic-child-select[data-optic-type="' + type + '"]' );
+
+			if ( ! $source.length || ! $target.length ) {
+				return;
+			}
+
+			$target.val( $source.val() || '' );
+		} );
+	}
+
 	function addChildBlock() {
 		var tpl = $( '#wc-optic-child-config-template' ).html();
 		if ( ! tpl ) {
@@ -218,6 +244,7 @@
 		var $block = $( $.trim( html ) );
 		$block.find( '.wc-optic-child-id' ).val( 'child_' + index );
 		getPanel().find( '#wc-optic-child-config-list' ).append( $block );
+		copyCatalogValuesFromFirstChild( $block );
 		initChildBlock( $block );
 		applyDivisionPowerFields();
 		renumberBlocks();
@@ -236,6 +263,19 @@
 
 	function isOpticProductScreen() {
 		return $( 'select#product-type' ).val() === 'optic_product';
+	}
+
+	function shouldDefaultToOpticProduct() {
+		return !! ( wcOpticAdmin && wcOpticAdmin.isNewProduct && $( 'select#product-type option[value="optic_product"]' ).length );
+	}
+
+	function ensureDefaultOpticProductType() {
+		var $type = $( 'select#product-type' );
+		if ( ! shouldDefaultToOpticProduct() || ! $type.length || isOpticProductScreen() ) {
+			return;
+		}
+
+		$type.val( 'optic_product' ).trigger( 'change' );
 	}
 
 	$( document.body )
@@ -273,6 +313,7 @@
 		} );
 
 	$( function () {
+		ensureDefaultOpticProductType();
 		if ( isOpticProductScreen() ) {
 			initOpticProductPanel();
 		}

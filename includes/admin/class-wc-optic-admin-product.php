@@ -46,7 +46,11 @@ class WC_Optic_Admin_Product {
 
 		echo '<div id="optic_product_data_panel" class="panel woocommerce_options_panel hidden">';
 
-		$product = wc_get_product( $post->ID );
+		$product = ( $post && ! empty( $post->ID ) ) ? wc_get_product( $post->ID ) : null;
+		if ( ( ! $product || 'optic_product' !== $product->get_type() ) && self::is_new_product_screen() ) {
+			$product = new WC_Product_Optic_Product();
+		}
+
 		if ( ! $product || 'optic_product' !== $product->get_type() ) {
 			echo '<p>' . esc_html__( 'Save as Optic Product to configure optical data.', 'wc-optic' ) . '</p></div>';
 			return;
@@ -214,6 +218,7 @@ class WC_Optic_Admin_Product {
 			array(
 				'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
 				'nonce'          => wp_create_nonce( 'wc_optic_admin' ),
+				'isNewProduct'   => self::is_new_product_screen(),
 				'divisionPowers' => $division_powers,
 				'powerTypes'     => WC_Optic_Catalog::get_power_types(),
 				'i18n'           => array(
@@ -222,6 +227,16 @@ class WC_Optic_Admin_Product {
 				),
 			)
 		);
+	}
+
+	/**
+	 * Whether the current admin screen is the new product screen.
+	 *
+	 * @return bool
+	 */
+	protected static function is_new_product_screen() {
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		return $screen && 'product' === $screen->id && 'add' === $screen->action;
 	}
 
 	/**
@@ -268,6 +283,19 @@ class WC_Optic_Admin_Product {
 			'wc-optic-child-unit-price wc_input_price'
 		);
 
+		self::render_child_text_input(
+			'_optic_child_configs[' . $index_token . '][stock_qty]',
+			'wc_optic_child_' . $index_token . '_stock_qty',
+			__( 'Stock quantity', 'wc-optic' ),
+			(string) ( $config['stock_qty'] ?? '' ),
+			'wc-optic-child-stock-qty',
+			'number',
+			array(
+				'min'  => '0',
+				'step' => '1',
+			)
+		);
+
 		echo '<div class="wc-optic-child-fields-grid">';
 		foreach ( WC_Optic_SKU::META_KEYS as $type => $meta_key ) {
 			$value = in_array( $type, $power_types, true ) ? (int) ( $config['powers'][ $type ] ?? 0 ) : (int) ( $config['catalog'][ $type ] ?? 0 );
@@ -292,16 +320,23 @@ class WC_Optic_Admin_Product {
 	/**
 	 * Render child text input.
 	 *
-	 * @param string $name  Field name.
-	 * @param string $id    Field id.
-	 * @param string $label Label.
-	 * @param string $value Value.
-	 * @param string $class CSS classes.
+	 * @param string $name       Field name.
+	 * @param string $id         Field id.
+	 * @param string $label      Label.
+	 * @param string $value      Value.
+	 * @param string $class      CSS classes.
+	 * @param string $type       Input type.
+	 * @param array  $attributes HTML attributes.
 	 */
-	protected static function render_child_text_input( $name, $id, $label, $value, $class = '' ) {
+	protected static function render_child_text_input( $name, $id, $label, $value, $class = '', $type = 'text', array $attributes = array() ) {
+		$attrs = '';
+		foreach ( $attributes as $attr_key => $attr_value ) {
+			$attrs .= ' ' . sanitize_key( $attr_key ) . '="' . esc_attr( (string) $attr_value ) . '"';
+		}
+
 		echo '<p class="form-field form-field-wide">';
 		echo '<label for="' . esc_attr( $id ) . '">' . esc_html( $label ) . '</label>';
-		echo '<input type="text" class="' . esc_attr( $class ) . '" name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '" value="' . esc_attr( $value ) . '" />';
+		echo '<input type="' . esc_attr( $type ) . '" class="' . esc_attr( $class ) . '" name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '" value="' . esc_attr( $value ) . '"' . $attrs . ' />';
 		echo '</p>';
 	}
 

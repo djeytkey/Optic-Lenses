@@ -324,6 +324,7 @@ class WC_Optic_SKU {
 			'enabled'    => empty( $raw['enabled'] ) ? false : true,
 			'sort'       => isset( $raw['sort'] ) ? (int) $raw['sort'] : $index,
 			'unit_price' => '',
+			'stock_qty'  => '',
 			'catalog'    => array(),
 			'powers'     => array(),
 			'sku'        => '',
@@ -331,6 +332,9 @@ class WC_Optic_SKU {
 
 		if ( isset( $raw['unit_price'] ) && '' !== trim( (string) $raw['unit_price'] ) ) {
 			$out['unit_price'] = (string) wc_format_decimal( wp_unslash( $raw['unit_price'] ) );
+		}
+		if ( isset( $raw['stock_qty'] ) && '' !== trim( (string) $raw['stock_qty'] ) ) {
+			$out['stock_qty'] = (string) absint( wp_unslash( $raw['stock_qty'] ) );
 		}
 
 		foreach ( self::META_KEYS as $type => $meta_key ) {
@@ -433,6 +437,53 @@ class WC_Optic_SKU {
 	}
 
 	/**
+	 * Get child stock quantity, or null when stock is not managed.
+	 *
+	 * @param array $config Child config.
+	 * @return int|null
+	 */
+	public static function get_child_stock_qty( array $config ) {
+		if ( ! isset( $config['stock_qty'] ) || '' === trim( (string) $config['stock_qty'] ) ) {
+			return null;
+		}
+
+		return max( 0, absint( $config['stock_qty'] ) );
+	}
+
+	/**
+	 * Whether a child can satisfy the requested quantity.
+	 *
+	 * @param array $config             Child config.
+	 * @param int   $requested_quantity Requested quantity.
+	 * @return bool
+	 */
+	public static function child_is_in_stock( array $config, $requested_quantity = 1 ) {
+		$stock = self::get_child_stock_qty( $config );
+		if ( null === $stock ) {
+			return true;
+		}
+
+		return $stock >= max( 1, (int) $requested_quantity );
+	}
+
+	/**
+	 * Get enabled, complete, and currently purchasable child configs.
+	 *
+	 * @param WC_Product $product Product.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function get_purchasable_child_configs( WC_Product $product ) {
+		$out = array();
+		foreach ( self::get_enabled_child_configs( $product ) as $config ) {
+			if ( self::child_is_in_stock( $config, 1 ) ) {
+				$out[] = $config;
+			}
+		}
+
+		return $out;
+	}
+
+	/**
 	 * Whether a child is enabled.
 	 *
 	 * @param array $config Child config.
@@ -487,7 +538,12 @@ class WC_Optic_SKU {
 	 */
 	public static function get_min_child_price( WC_Product $product ) {
 		$prices = array();
-		foreach ( self::get_enabled_child_configs( $product ) as $config ) {
+		$configs = self::get_purchasable_child_configs( $product );
+		if ( empty( $configs ) ) {
+			$configs = self::get_enabled_child_configs( $product );
+		}
+
+		foreach ( $configs as $config ) {
 			$price = self::get_child_unit_price( $config );
 			if ( $price > 0 ) {
 				$prices[] = $price;
