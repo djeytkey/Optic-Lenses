@@ -278,6 +278,31 @@
 		$type.val( 'optic_product' ).trigger( 'change' );
 	}
 
+	function moveOpticTabFirst() {
+		var $tabs = $( 'ul.product_data_tabs' );
+		var $opticTab = $tabs.find( 'li.optic_config_tab' );
+		if ( $tabs.length && $opticTab.length ) {
+			$opticTab.prependTo( $tabs );
+		}
+	}
+
+	function activateOpticConfigTab() {
+		var $link = $( 'ul.product_data_tabs li.optic_config_tab:visible a' );
+		if ( $link.length ) {
+			$link.trigger( 'click' );
+		}
+	}
+
+	function focusOpticProductAdminTab() {
+		if ( ! isOpticProductScreen() ) {
+			return;
+		}
+		moveOpticTabFirst();
+		if ( wcOpticAdmin && wcOpticAdmin.isNewProduct ) {
+			activateOpticConfigTab();
+		}
+	}
+
 	$( document.body )
 		.on( 'change', '.wc-optic-child-select', function () {
 			refreshBlockSkuPreview( $( this ).closest( '.wc-optic-child-config' ) );
@@ -305,6 +330,7 @@
 		} )
 		.on( 'woocommerce-product-type-change', function () {
 			if ( isOpticProductScreen() ) {
+				focusOpticProductAdminTab();
 				setTimeout( initOpticProductPanel, 100 );
 			}
 		} )
@@ -315,7 +341,10 @@
 	$( function () {
 		ensureDefaultOpticProductType();
 		if ( isOpticProductScreen() ) {
-			initOpticProductPanel();
+			setTimeout( function () {
+				focusOpticProductAdminTab();
+				initOpticProductPanel();
+			}, 120 );
 		}
 	} );
 }( jQuery ) );

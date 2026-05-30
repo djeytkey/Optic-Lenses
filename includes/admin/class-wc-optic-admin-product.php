@@ -33,7 +33,7 @@ class WC_Optic_Admin_Product {
 			'label'    => __( 'Optic configuration', 'wc-optic' ),
 			'target'   => 'optic_product_data_panel',
 			'class'    => array( 'show_if_optic_product' ),
-			'priority' => 26,
+			'priority' => 1,
 		);
 		return $tabs;
 	}
