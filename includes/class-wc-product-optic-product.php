@@ -64,6 +64,33 @@ class WC_Product_Optic_Product extends WC_Product {
 	}
 
 	/**
+	 * Optic lines use per–internal-product quantities (cart payload), not WooCommerce "sold individually".
+	 *
+	 * @return bool
+	 */
+	public function is_sold_individually() {
+		return false;
+	}
+
+	/**
+	 * Stock is tracked on internal child configs, not the parent SKU row.
+	 *
+	 * @return bool
+	 */
+	public function managing_stock() {
+		return false;
+	}
+
+	/**
+	 * In-stock when at least one internal product has remaining quantity.
+	 *
+	 * @return bool
+	 */
+	public function is_in_stock() {
+		return WC_Optic_Frontend::product_is_in_stock( $this );
+	}
+
+	/**
 	 * Add to cart URL.
 	 *
 	 * @return string

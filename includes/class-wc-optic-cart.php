@@ -41,6 +41,7 @@ class WC_Optic_Cart {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_cart_scripts' ) );
 		add_filter( 'woocommerce_update_cart_action_cart_updated', array( __CLASS__, 'sync_cart_optic_quantities' ), 5, 1 );
 		add_action( 'woocommerce_check_cart_items', array( __CLASS__, 'validate_cart_stock' ) );
+		add_filter( 'woocommerce_cart_item_required_stock_is_not_enough', array( __CLASS__, 'bypass_parent_stock_check' ), 10, 3 );
 		add_action( 'woocommerce_reduce_order_stock', array( __CLASS__, 'reduce_order_internal_stock' ) );
 		add_action( 'woocommerce_restore_order_stock', array( __CLASS__, 'restore_order_internal_stock' ) );
 	}
@@ -770,6 +771,21 @@ class WC_Optic_Cart {
 			$cart_updated = true;
 		}
 		return $cart_updated;
+	}
+
+	/**
+	 * Skip WooCommerce parent-product stock math for optic lines (stock lives on child configs).
+	 *
+	 * @param bool       $not_enough Whether parent stock is insufficient.
+	 * @param WC_Product $product    Product in cart.
+	 * @param array      $values     Cart item.
+	 * @return bool
+	 */
+	public static function bypass_parent_stock_check( $not_enough, $product, $values ) {
+		if ( ! empty( $values[ self::CART_KEY ] ) && $product instanceof WC_Product && 'optic_product' === $product->get_type() ) {
+			return false;
+		}
+		return $not_enough;
 	}
 
 	/**
