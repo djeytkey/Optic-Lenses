@@ -506,7 +506,7 @@ class WC_Optic_SKU {
 			$id  = isset( $config['powers'][ $power ] ) ? (int) $config['powers'][ $power ] : 0;
 			$row = $id ? WC_Optic_Catalog::get_valid_term( $id, $power ) : null;
 			if ( $row ) {
-				$bits[] = WC_Optic_Catalog::get_power_field_label( $power ) . ': ' . $row->name;
+				$bits[] = WC_Optic_Catalog::get_power_field_label( $power ) . ': ' . WC_Optic_Catalog::get_display_name( $row );
 			}
 		}
 

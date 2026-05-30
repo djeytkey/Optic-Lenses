@@ -52,7 +52,8 @@
 }
 
 /* RTL: OD column first in reading order (DOM is OS then OD) */
-.rtl .wc-optic-eyes--stack {
+.rtl .wc-optic-eyes--stack,
+html[dir="rtl"] .wc-optic-eyes--stack {
 	direction: rtl;
 }
 

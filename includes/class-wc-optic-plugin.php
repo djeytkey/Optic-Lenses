@@ -57,6 +57,9 @@ class WC_Optic_Plugin {
 		WC_Optic_Frontend::hooks();
 		WC_Optic_Cart::hooks();
 		WC_Optic_Pricing::hooks();
+
+		add_action( 'wpml_loaded', array( 'WC_Optic_WPML', 'maybe_init' ) );
+		WC_Optic_WPML::maybe_init();
 	}
 
 	/**
@@ -90,24 +93,30 @@ class WC_Optic_Plugin {
 	 * @return array<string, array{label:string, powers:string[]}>
 	 */
 	public static function get_divisions() {
-		return array(
-			'color_lenses'         => array(
+		$divisions = array(
+			'color_lenses'       => array(
 				'label'  => __( 'Color lenses', 'wc-optic' ),
 				'powers' => array( 'sph' ),
 			),
-			'sama_color_lenses'    => array(
+			'sama_color_lenses'  => array(
 				'label'  => __( 'SAMA Color Lenses', 'wc-optic' ),
 				'powers' => array( 'sph', 'cyl', 'axis' ),
 			),
-			'astigmatism_toric'    => array(
+			'astigmatism_toric'  => array(
 				'label'  => __( 'Astigmatism Toric', 'wc-optic' ),
 				'powers' => array( 'sph', 'cyl', 'axis' ),
 			),
-			'multifocal_bifocal'   => array(
+			'multifocal_bifocal' => array(
 				'label'  => __( 'Multifocal Bifocal', 'wc-optic' ),
 				'powers' => array( 'sph', 'add' ),
 			),
 		);
+
+		foreach ( $divisions as $slug => $def ) {
+			$divisions[ $slug ]['label'] = apply_filters( 'wc_optic_division_label', $def['label'], $slug );
+		}
+
+		return $divisions;
 	}
 
 	/**

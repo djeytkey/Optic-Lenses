@@ -35,6 +35,7 @@ class WC_Optic_Cart {
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_order_assets' ) );
 		add_filter( 'woocommerce_get_item_data', array( __CLASS__, 'get_item_data' ), 10, 2 );
 		add_filter( 'woocommerce_cart_item_price', array( __CLASS__, 'cart_item_price' ), 10, 3 );
+		add_filter( 'woocommerce_cart_item_subtotal', array( __CLASS__, 'cart_item_subtotal' ), 10, 3 );
 		add_action( 'woocommerce_checkout_create_order_line_item', array( __CLASS__, 'order_line_item' ), 10, 4 );
 		add_filter( 'woocommerce_cart_item_quantity', array( __CLASS__, 'cart_item_quantity' ), 10, 3 );
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_cart_scripts' ) );
@@ -185,7 +186,7 @@ class WC_Optic_Cart {
 			}
 			$powers[ $power ] = array(
 				'id'    => $id,
-				'label' => (string) $row->name,
+				'label' => WC_Optic_Catalog::get_display_name( $row ),
 			);
 		}
 
@@ -242,7 +243,11 @@ class WC_Optic_Cart {
 			return;
 		}
 
-		$item = self::sync_cart_item_payload_quantities( $item );
+		$item     = self::sync_cart_item_payload_quantities( $item );
+		$line_qty = max( 1, (int) ( $item[ self::CART_KEY ]['line_qty'] ?? 1 ) );
+		if ( (int) $item['quantity'] !== $line_qty ) {
+			$item['quantity'] = $line_qty;
+		}
 		WC()->cart->cart_contents[ $cart_item_key ] = $item;
 	}
 
@@ -444,6 +449,62 @@ class WC_Optic_Cart {
 		$out .= '</div>';
 
 		return $out;
+	}
+
+	/**
+	 * Show the true optic line total in cart/checkout (Flatsome subtotal column, mini-cart, etc.).
+	 *
+	 * WooCommerce otherwise uses (line_total / line_qty) × quantity, which looks like an average when qty is out of sync.
+	 *
+	 * @param string $subtotal_html Formatted subtotal HTML.
+	 * @param array  $cart_item     Cart item.
+	 * @param string $cart_item_key Cart item key.
+	 * @return string
+	 */
+	public static function cart_item_subtotal( $subtotal_html, $cart_item, $cart_item_key ) {
+		if ( empty( $cart_item[ self::CART_KEY ] ) || ! is_array( $cart_item[ self::CART_KEY ] ) ) {
+			return $subtotal_html;
+		}
+
+		$cart_item = self::sync_cart_item_payload_quantities( $cart_item );
+		return self::format_cart_line_subtotal_html( $cart_item );
+	}
+
+	/**
+	 * Format optic line subtotal with the same tax display rules as WooCommerce cart rows.
+	 *
+	 * @param array $cart_item Cart item (must include CART_KEY payload).
+	 * @return string
+	 */
+	public static function format_cart_line_subtotal_html( array $cart_item ) {
+		$payload    = $cart_item[ self::CART_KEY ];
+		$line_total = WC_Optic_Pricing::calculate_payload_total( $payload );
+		$product    = ( ! empty( $cart_item['data'] ) && $cart_item['data'] instanceof WC_Product ) ? $cart_item['data'] : null;
+		$cart       = WC()->cart;
+
+		if ( ! $product || ! $cart ) {
+			return wc_price( $line_total );
+		}
+
+		if ( $product->is_taxable() ) {
+			if ( $cart->display_prices_including_tax() ) {
+				$row_price = wc_get_price_including_tax( $product, array( 'qty' => 1, 'price' => $line_total ) );
+				$html      = wc_price( $row_price );
+				if ( ! wc_prices_include_tax() && $cart->get_subtotal_tax() > 0 ) {
+					$html .= ' <small class="tax_label">' . WC()->countries->inc_tax_or_vat() . '</small>';
+				}
+				return $html;
+			}
+
+			$row_price = wc_get_price_excluding_tax( $product, array( 'qty' => 1, 'price' => $line_total ) );
+			$html      = wc_price( $row_price );
+			if ( wc_prices_include_tax() && $cart->get_subtotal_tax() > 0 ) {
+				$html .= ' <small class="tax_label">' . WC()->countries->ex_tax_or_vat() . '</small>';
+			}
+			return $html;
+		}
+
+		return wc_price( $line_total );
 	}
 
 	/**
@@ -1032,7 +1093,7 @@ class WC_Optic_Cart {
 	 * @param array $cart_item Cart item.
 	 * @return array
 	 */
-	protected static function sync_cart_item_payload_quantities( array $cart_item ) {
+	public static function sync_cart_item_payload_quantities( array $cart_item ) {
 		if ( empty( $cart_item[ self::CART_KEY ] ) || ! is_array( $cart_item[ self::CART_KEY ] ) ) {
 			return $cart_item;
 		}

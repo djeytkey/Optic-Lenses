@@ -147,7 +147,18 @@ class WC_Optic_Pricing {
 				continue;
 			}
 
-			$cart->cart_contents[ $cart_item_key ]['data']->set_price( self::get_payload_effective_unit_price( $payload ) );
+			$cart_item = WC_Optic_Cart::sync_cart_item_payload_quantities( $cart_item );
+			$payload   = $cart_item[ WC_Optic_Cart::CART_KEY ];
+			$line_qty  = max( 1, (int) ( $payload['line_qty'] ?? 1 ) );
+			$line_total = self::calculate_payload_total( $payload );
+
+			if ( (int) $cart_item['quantity'] !== $line_qty ) {
+				$cart->cart_contents[ $cart_item_key ]['quantity'] = $line_qty;
+			}
+
+			$effective_unit = $line_qty > 0 ? (float) wc_format_decimal( $line_total / $line_qty ) : 0.0;
+			$cart->cart_contents[ $cart_item_key ]['data']->set_price( $effective_unit );
+			$cart->cart_contents[ $cart_item_key ][ WC_Optic_Cart::CART_KEY ] = $payload;
 		}
 	}
 }

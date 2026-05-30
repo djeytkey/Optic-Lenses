@@ -11,6 +11,10 @@
  * Requires PHP: 8.1
  * WC requires at least: 8.0
  * WC tested up to: 9.8
+ * Requires Plugins: woocommerce
+ *
+ * WPML: wpml-config.xml is loaded automatically when this plugin is active (no manual rescan).
+ * Translate catalog names in WPML → String Translation (domain wc-optic-catalog).
  *
  * @package WC_Optic_Product
  */
@@ -36,7 +40,29 @@ require_once WC_OPTIC_PLUGIN_DIR . 'includes/class-wc-optic-autoload.php';
 // Activation runs before plugins_loaded; autoloader is not registered yet.
 require_once WC_OPTIC_PLUGIN_DIR . 'includes/class-wc-optic-database.php';
 
-register_activation_hook( __FILE__, array( 'WC_Optic_Database', 'activate' ) );
+register_activation_hook( __FILE__, 'wc_optic_activate_plugin' );
+
+/**
+ * Plugin activation: schema + ask WPML to reload wpml-config.xml on next request.
+ */
+function wc_optic_activate_plugin() {
+	WC_Optic_Database::activate();
+	update_option( 'wc_optic_pending_wpml_config', '1', false );
+}
+
+/**
+ * Reload WPML custom-field rules after activation (WPML loads plugin wpml-config.xml files automatically).
+ */
+function wc_optic_maybe_reload_wpml_config() {
+	if ( ! get_option( 'wc_optic_pending_wpml_config' ) ) {
+		return;
+	}
+	delete_option( 'wc_optic_pending_wpml_config' );
+	if ( class_exists( 'WPML_Config', false ) && is_callable( array( 'WPML_Config', 'load_config_run' ) ) ) {
+		WPML_Config::load_config_run();
+	}
+}
+add_action( 'plugins_loaded', 'wc_optic_maybe_reload_wpml_config', 20 );
 
 /**
  * Bootstrap after plugins loaded.

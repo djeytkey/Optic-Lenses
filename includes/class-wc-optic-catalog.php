@@ -137,7 +137,9 @@ class WC_Optic_Catalog {
 		if ( ! $res ) {
 			return false;
 		}
-		return (int) $wpdb->insert_id;
+		$id = (int) $wpdb->insert_id;
+		do_action( 'wc_optic_catalog_term_saved', $id, $name, $term_type );
+		return $id;
 	}
 
 	/**
@@ -150,7 +152,13 @@ class WC_Optic_Catalog {
 	public static function update( $id, array $data ) {
 		global $wpdb;
 		$table = WC_Optic_Database::table_catalog();
-		return (bool) $wpdb->update( $table, $data, array( 'id' => $id ) );
+		$ok    = (bool) $wpdb->update( $table, $data, array( 'id' => $id ) );
+		if ( $ok && isset( $data['name'] ) ) {
+			$row = self::get_term( $id );
+			$type = $row && isset( $row->term_type ) ? (string) $row->term_type : '';
+			do_action( 'wc_optic_catalog_term_saved', (int) $id, (string) $data['name'], $type );
+		}
+		return $ok;
 	}
 
 	/**
@@ -162,7 +170,22 @@ class WC_Optic_Catalog {
 	public static function delete( $id ) {
 		global $wpdb;
 		$table = WC_Optic_Database::table_catalog();
-		return (bool) $wpdb->delete( $table, array( 'id' => (int) $id ) );
+		$id    = (int) $id;
+		do_action( 'wc_optic_catalog_term_deleted', $id );
+		return (bool) $wpdb->delete( $table, array( 'id' => $id ) );
+	}
+
+	/**
+	 * Localized display name for a catalog row (WPML String Translation when active).
+	 *
+	 * @param object|null $row Catalog row from get_term() / get_valid_term().
+	 * @return string
+	 */
+	public static function get_display_name( $row ) {
+		if ( ! $row || ! isset( $row->name ) ) {
+			return '';
+		}
+		return (string) apply_filters( 'wc_optic_catalog_display_name', (string) $row->name, $row );
 	}
 
 	/**

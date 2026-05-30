@@ -345,7 +345,7 @@ class WC_Optic_Frontend {
 			}
 
 			$html .= '<li class="wc-optic-child-choice__power-item">';
-			$html .= esc_html( WC_Optic_Catalog::get_power_field_label( $power ) . ': ' . $row->name );
+			$html .= esc_html( WC_Optic_Catalog::get_power_field_label( $power ) . ': ' . WC_Optic_Catalog::get_display_name( $row ) );
 			$html .= '</li>';
 		}
 		$html .= '</ul>';

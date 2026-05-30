@@ -363,7 +363,7 @@ class WC_Optic_Admin_Product {
 		echo '<select name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '" class="wc-enhanced-select wc-optic-select2 wc-optic-child-select" data-optic-type="' . esc_attr( $type ) . '" data-is-power="' . esc_attr( $is_power ? '1' : '0' ) . '" data-placeholder="' . esc_attr__( '- Select -', 'wc-optic' ) . '">';
 		echo '<option value=""></option>';
 		foreach ( WC_Optic_Catalog::get_terms( $type ) as $row ) {
-			echo '<option value="' . esc_attr( (string) $row->id ) . '" ' . selected( (int) $selected, (int) $row->id, false ) . '>' . esc_html( $row->name ) . '</option>';
+			echo '<option value="' . esc_attr( (string) $row->id ) . '" ' . selected( (int) $selected, (int) $row->id, false ) . '>' . esc_html( WC_Optic_Catalog::get_display_name( $row ) ) . '</option>';
 		}
 		echo '</select>';
 		echo '</p>';

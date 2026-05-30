@@ -40,6 +40,7 @@ class WC_Optic_Autoload {
 			'WC_Optic_Frontend'            => WC_OPTIC_PLUGIN_DIR . 'includes/class-wc-optic-frontend.php',
 			'WC_Optic_Cart'                => WC_OPTIC_PLUGIN_DIR . 'includes/class-wc-optic-cart.php',
 			'WC_Optic_Pricing'             => WC_OPTIC_PLUGIN_DIR . 'includes/class-wc-optic-pricing.php',
+			'WC_Optic_WPML'                => WC_OPTIC_PLUGIN_DIR . 'includes/class-wc-optic-wpml.php',
 			'WC_Optic_Admin_Settings'      => WC_OPTIC_PLUGIN_DIR . 'includes/admin/class-wc-optic-admin-settings.php',
 			'WC_Optic_Admin_Product'       => WC_OPTIC_PLUGIN_DIR . 'includes/admin/class-wc-optic-admin-product.php',
 			'WC_Optic_Admin_Import'        => WC_OPTIC_PLUGIN_DIR . 'includes/admin/class-wc-optic-admin-import.php',
