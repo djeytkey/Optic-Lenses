@@ -1,9 +1,10 @@
 <?php
 /**
- * Plugin Name: WooCommerce Optic Product
+ * Plugin Name: Alwaleed Optics Products
+ * Plugin URI: https://www.moroccoder.com/
  * Description: Custom WooCommerce product type for optical/lens products with prescription logic, dynamic SKU, and global catalog.
  * Version: 1.0.0
- * Author: Alwaleed
+ * Author: Tarik BOUKJIJ
  * Text Domain: wc-optic
  * Domain Path: /languages
  * Requires at least: 6.0
