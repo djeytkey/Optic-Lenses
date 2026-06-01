@@ -155,27 +155,40 @@
 		}
 	}
 
-	function resolveChildForEye( eye ) {
+	function isSelectionComplete( eye ) {
 		var matrix = getMatrix();
 		var powers = matrix.powers || [];
-		var partial = getPartialSelection( eye );
-		if ( Object.keys( partial ).length !== powers.length ) {
+		return Object.keys( getPartialSelection( eye ) ).length === powers.length;
+	}
+
+	function resolveChildForEye( eye ) {
+		if ( ! isSelectionComplete( eye ) ) {
 			return null;
 		}
+		var partial = getPartialSelection( eye );
 		var matches = childrenMatching( partial );
 		return matches.length ? matches[ 0 ] : null;
 	}
 
-	function syncResolvedChildField( eye ) {
+	/**
+	 * @param {string} eye left|right
+	 * @param {{ showInvalidCombo?: boolean }} options Show "combination not available" only when true (submit).
+	 */
+	function syncResolvedChildField( eye, options ) {
+		options = options || {};
+		var showInvalidCombo = options.showInvalidCombo === true;
 		var child = resolveChildForEye( eye );
 		var $hidden = getEyeContainer( eye ).find( '.wc-optic-resolved-child' );
 		var $notice = getEyeContainer( eye ).find( '.wc-optic-resolution-notice' );
 
 		if ( ! child ) {
 			$hidden.val( '' );
-			$notice.prop( 'hidden', Object.keys( getPartialSelection( eye ) ).length === 0 );
-			if ( ! $notice.prop( 'hidden' ) ) {
+			if ( showInvalidCombo && isSelectionComplete( eye ) ) {
+				$notice.prop( 'hidden', false );
 				$notice.text( getI18n( 'comboUnavailable', 'This combination is not available.' ) );
+			} else {
+				$notice.prop( 'hidden', true );
+				$notice.text( '' );
 			}
 			return null;
 		}
@@ -294,6 +307,67 @@
 		return left && right && String( left.id ) === String( right.id );
 	}
 
+	function hasValidPurchasableSelection() {
+		var different = $( '#wc_optic_different_power' ).is( ':checked' );
+		var samePowers = eyesHaveSameSelection();
+		var left = resolveChildForEye( 'left' );
+		if ( ! left || ! childHasStock( left ) ) {
+			return false;
+		}
+		if ( different && ! samePowers ) {
+			var right = resolveChildForEye( 'right' );
+			return !!( right && childHasStock( right ) );
+		}
+		return true;
+	}
+
+	function syncSummaryProductPrice() {
+		if ( typeof wcOpticFront === 'undefined' || ! wcOpticFront.summaryPriceSelector ) {
+			return;
+		}
+		var $unitDisplay = $( '#wc_optic_unit_price_display' );
+		var $targets = $( wcOpticFront.summaryPriceSelector ).first();
+		if ( $targets.length && $unitDisplay.length ) {
+			$targets.html( $unitDisplay.html() );
+		}
+	}
+
+	function updatePriceDisplay() {
+		var $label = $( '.wc-optic-price-label' );
+		var $unitDisplay = $( '#wc_optic_unit_price_display' );
+		var $totalRow = $( '.wc-optic-line-total' );
+		var $totalDisplay = $( '#wc_optic_line_total_display' );
+
+		if ( ! $unitDisplay.length ) {
+			return;
+		}
+
+		if ( hasValidPurchasableSelection() ) {
+			var pricing = getPricingState();
+			if ( $label.length ) {
+				$label.text( getI18n( 'selectedPrice', 'Selected price' ) + ':' );
+			}
+			$unitDisplay.text( formatPrice( pricing.displayPrice ) );
+			if ( $totalRow.length ) {
+				$totalRow.prop( 'hidden', false );
+				$totalDisplay.text( formatPrice( pricing.total ) );
+			}
+		} else {
+			if ( $label.length ) {
+				$label.text( getI18n( 'price', 'Price' ) + ':' );
+			}
+			if ( typeof wcOpticFront !== 'undefined' && wcOpticFront.priceRangeHtml ) {
+				$unitDisplay.html( wcOpticFront.priceRangeHtml );
+			}
+			if ( $totalRow.length ) {
+				$totalRow.prop( 'hidden', true );
+				$totalDisplay.text( '' );
+			}
+		}
+
+		syncSummaryProductPrice();
+	}
+
 	function getPricingState() {
 		var different = $( '#wc_optic_different_power' ).is( ':checked' );
 		var samePowers = eyesHaveSameSelection();
@@ -382,15 +456,7 @@
 	}
 
 	function updateLineTotal() {
-		var $wrap = $( '.wc-optic-pricing' );
-		var $display = $( '#wc_optic_line_total_display' );
-		var $unitDisplay = $( '#wc_optic_unit_price_display' );
-		if ( ! $wrap.length || ! $display.length || typeof wcOpticFront === 'undefined' ) {
-			return;
-		}
-		var pricing = getPricingState();
-		$unitDisplay.text( formatPrice( pricing.displayPrice ) );
-		$display.text( formatPrice( pricing.total ) );
+		updatePriceDisplay();
 	}
 
 	function updateAddToCartState() {
@@ -467,6 +533,7 @@
 		toggleSamePower();
 		syncQuantityStockLimits();
 		syncLineQuantity();
+		updatePriceDisplay();
 		updateAddToCartState();
 
 		$( '#wc_optic_different_power' ).on( 'change', toggleSamePower );
@@ -483,10 +550,19 @@
 				syncRightPowersFromLeft();
 			}
 			syncLineQuantity();
-			updateAddToCartState();
+
 			var different = $( '#wc_optic_different_power' ).is( ':checked' );
+			var samePowers = eyesHaveSameSelection();
+			var validateRight = different && ! samePowers;
+
+			syncResolvedChildField( 'left', { showInvalidCombo: true } );
+			if ( validateRight ) {
+				syncResolvedChildField( 'right', { showInvalidCombo: true } );
+			}
+
+			updateAddToCartState();
 			var leftOk = getEyeResolvedData( 'left' ).inStock && resolveChildForEye( 'left' );
-			var rightOk = different ? ( getEyeResolvedData( 'right' ).inStock && resolveChildForEye( 'right' ) ) : leftOk;
+			var rightOk = validateRight ? ( getEyeResolvedData( 'right' ).inStock && resolveChildForEye( 'right' ) ) : leftOk;
 			if ( ! leftOk || ! rightOk ) {
 				e.preventDefault();
 			}

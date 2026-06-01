@@ -18,6 +18,7 @@ class WC_Optic_Pricing {
 	public static function hooks() {
 		add_filter( 'woocommerce_add_to_cart_quantity', array( __CLASS__, 'add_to_cart_quantity' ), 10, 2 );
 		add_filter( 'woocommerce_is_purchasable', array( __CLASS__, 'is_purchasable' ), 20, 2 );
+		add_filter( 'woocommerce_get_price_html', array( __CLASS__, 'filter_price_html' ), 20, 2 );
 		add_action( 'woocommerce_before_calculate_totals', array( __CLASS__, 'apply_cart_item_prices' ), 20 );
 	}
 
@@ -75,6 +76,45 @@ class WC_Optic_Pricing {
 		}
 
 		return (float) wc_format_decimal( $fallback );
+	}
+
+	/**
+	 * Formatted price range HTML for an optic parent product.
+	 *
+	 * @param WC_Product $product Product.
+	 * @return string
+	 */
+	public static function format_price_range_html( WC_Product $product ) {
+		$range = WC_Optic_SKU::get_child_price_range( $product );
+		if ( $range['min'] <= 0 ) {
+			return '';
+		}
+
+		if ( abs( $range['min'] - $range['max'] ) < 0.0001 ) {
+			return wc_price( $range['min'] );
+		}
+
+		if ( function_exists( 'wc_format_price_range' ) ) {
+			return wc_format_price_range( $range['min'], $range['max'] );
+		}
+
+		return wp_kses_post( wc_price( $range['min'] ) . ' – ' . wc_price( $range['max'] ) );
+	}
+
+	/**
+	 * Replace parent product price with internal product min–max range (loops + single).
+	 *
+	 * @param string     $price_html Default HTML.
+	 * @param WC_Product $product    Product.
+	 * @return string
+	 */
+	public static function filter_price_html( $price_html, $product ) {
+		if ( ! $product instanceof WC_Product || 'optic_product' !== $product->get_type() ) {
+			return $price_html;
+		}
+
+		$range_html = self::format_price_range_html( $product );
+		return $range_html ? $range_html : $price_html;
 	}
 
 	/**

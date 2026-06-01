@@ -94,13 +94,15 @@ class WC_Optic_Frontend {
 			WC_OPTIC_VERSION,
 			true
 		);
-		$unit_price = WC_Optic_Pricing::get_unit_price( $product );
+		$price_range = WC_Optic_SKU::get_child_price_range( $product );
 
 		wp_localize_script(
 			'wc-optic-frontend',
 			'wcOpticFront',
 			array(
-				'unitPrice'      => $unit_price,
+				'priceRange'     => $price_range,
+				'priceRangeHtml' => WC_Optic_Pricing::format_price_range_html( $product ),
+				'summaryPriceSelector' => '.entry-summary > .price, .product-summary > .price, .summary > .price, .product-page-price',
 				'currencySymbol' => get_woocommerce_currency_symbol(),
 				'decimalSep'     => wc_get_price_decimal_separator(),
 				'thousandSep'    => wc_get_price_thousand_separator(),
@@ -111,6 +113,7 @@ class WC_Optic_Frontend {
 					'rightEye'       => __( 'Right eye (OD)', 'wc-optic' ),
 					'leftEye'        => __( 'Left eye (OS)', 'wc-optic' ),
 					'select'         => __( '— Select —', 'wc-optic' ),
+					'price'          => __( 'Price', 'wc-optic' ),
 					'selectedPrice'  => __( 'Selected price', 'wc-optic' ),
 					'estimatedTotal' => __( 'Estimated total', 'wc-optic' ),
 					'inStock'        => __( 'In stock', 'wc-optic' ),

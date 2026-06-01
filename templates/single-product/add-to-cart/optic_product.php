@@ -44,28 +44,18 @@ do_action( 'woocommerce_before_add_to_cart_form' );
 	</p>
 
 	<?php
-	$initial_unit_price = 0;
-	foreach ( $storefront_matrix['children'] ?? array() as $matrix_child ) {
-		if ( ! empty( $matrix_child['inStock'] ) && ! empty( $matrix_child['price'] ) ) {
-			$initial_unit_price = (float) $matrix_child['price'];
-			break;
-		}
-	}
-	if ( $initial_unit_price <= 0 && ! empty( $storefront_matrix['children'][0]['price'] ) ) {
-		$initial_unit_price = (float) $storefront_matrix['children'][0]['price'];
-	}
-	if ( $initial_unit_price > 0 ) :
-		$initial_qty   = 1;
-		$initial_total = WC_Optic_Pricing::calculate_line_total( $initial_unit_price, $initial_qty );
+	$price_range_html = WC_Optic_Pricing::format_price_range_html( $product );
+	if ( $price_range_html ) :
+		$price_range = WC_Optic_SKU::get_child_price_range( $product );
 		?>
-		<div class="wc-optic-pricing" data-unit-price="<?php echo esc_attr( (string) $initial_unit_price ); ?>">
+		<div class="wc-optic-pricing" data-price-min="<?php echo esc_attr( (string) $price_range['min'] ); ?>" data-price-max="<?php echo esc_attr( (string) $price_range['max'] ); ?>">
 			<p class="wc-optic-unit-price">
-				<strong><?php esc_html_e( 'Selected price', 'wc-optic' ); ?>:</strong>
-				<span id="wc_optic_unit_price_display"><?php echo wp_kses_post( wc_price( $initial_unit_price ) ); ?></span>
+				<strong class="wc-optic-price-label"><?php esc_html_e( 'Price', 'wc-optic' ); ?>:</strong>
+				<span id="wc_optic_unit_price_display"><?php echo wp_kses_post( $price_range_html ); ?></span>
 			</p>
-			<p class="wc-optic-line-total">
+			<p class="wc-optic-line-total" hidden>
 				<strong><?php esc_html_e( 'Estimated total', 'wc-optic' ); ?>:</strong>
-				<span id="wc_optic_line_total_display"><?php echo wp_kses_post( wc_price( $initial_total ) ); ?></span>
+				<span id="wc_optic_line_total_display"></span>
 			</p>
 		</div>
 	<?php endif; ?>

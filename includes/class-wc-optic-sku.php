@@ -676,26 +676,79 @@ class WC_Optic_SKU {
 	}
 
 	/**
-	 * Get the minimum enabled child price for a product.
+	 * Collect unit prices from enabled, complete internal products.
 	 *
 	 * @param WC_Product $product Product.
-	 * @return float
+	 * @return float[]
 	 */
-	public static function get_min_child_price( WC_Product $product ) {
-		$prices = array();
-		$configs = self::get_purchasable_child_configs( $product );
-		if ( empty( $configs ) ) {
-			$configs = self::get_enabled_child_configs( $product );
-		}
+	public static function get_child_unit_prices( WC_Product $product ) {
+		$division = (string) $product->get_meta( '_optic_division', true );
+		$prices   = array();
 
-		foreach ( $configs as $config ) {
+		foreach ( self::get_enabled_child_configs( $product ) as $config ) {
+			if ( ! self::child_is_complete( $config, $division ) ) {
+				continue;
+			}
 			$price = self::get_child_unit_price( $config );
 			if ( $price > 0 ) {
 				$prices[] = $price;
 			}
 		}
 
+		return $prices;
+	}
+
+	/**
+	 * Get the minimum enabled child price for a product.
+	 *
+	 * @param WC_Product $product Product.
+	 * @return float
+	 */
+	public static function get_min_child_price( WC_Product $product ) {
+		$prices = self::get_child_unit_prices( $product );
+		if ( empty( $prices ) ) {
+			$configs = self::get_purchasable_child_configs( $product );
+			foreach ( $configs as $config ) {
+				$price = self::get_child_unit_price( $config );
+				if ( $price > 0 ) {
+					$prices[] = $price;
+				}
+			}
+		}
+
 		return empty( $prices ) ? 0.0 : (float) min( $prices );
+	}
+
+	/**
+	 * Get the maximum enabled child price for a product.
+	 *
+	 * @param WC_Product $product Product.
+	 * @return float
+	 */
+	public static function get_max_child_price( WC_Product $product ) {
+		$prices = self::get_child_unit_prices( $product );
+		return empty( $prices ) ? 0.0 : (float) max( $prices );
+	}
+
+	/**
+	 * Min/max unit prices for storefront display.
+	 *
+	 * @param WC_Product $product Product.
+	 * @return array{min: float, max: float}
+	 */
+	public static function get_child_price_range( WC_Product $product ) {
+		$prices = self::get_child_unit_prices( $product );
+		if ( empty( $prices ) ) {
+			return array(
+				'min' => 0.0,
+				'max' => 0.0,
+			);
+		}
+
+		return array(
+			'min' => (float) min( $prices ),
+			'max' => (float) max( $prices ),
+		);
 	}
 
 	/**
