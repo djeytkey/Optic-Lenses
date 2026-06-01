@@ -28,16 +28,16 @@ class WC_Product_Optic_Product extends WC_Product {
 	 * @return bool
 	 */
 	protected function has_single_purchasable_child() {
-		return 1 === count( WC_Optic_SKU::get_purchasable_child_configs( $this ) );
+		return false;
 	}
 
 	/**
-	 * Whether this optic product has more than one purchasable internal product.
+	 * Whether this optic product has sellable prescription combinations.
 	 *
 	 * @return bool
 	 */
 	protected function has_multiple_purchasable_children() {
-		return count( WC_Optic_SKU::get_purchasable_child_configs( $this ) ) > 1;
+		return WC_Optic_Frontend::has_child_options( $this );
 	}
 
 	/**

@@ -106,7 +106,7 @@ class WC_Optic_Frontend {
 				'thousandSep'    => wc_get_price_thousand_separator(),
 				'decimals'       => wc_get_price_decimals(),
 				'priceFormat'    => get_woocommerce_price_format(),
-				'selectorUi'     => WC_Optic_SKU::get_selector_ui( $product ),
+				'matrix'         => WC_Optic_SKU::get_storefront_matrix( $product ),
 				'i18n'           => array(
 					'rightEye'       => __( 'Right eye (OD)', 'wc-optic' ),
 					'leftEye'        => __( 'Left eye (OS)', 'wc-optic' ),
@@ -116,6 +116,9 @@ class WC_Optic_Frontend {
 					'inStock'        => __( 'In stock', 'wc-optic' ),
 					'outOfStock'     => __( 'Out of stock', 'wc-optic' ),
 					'stockAvailable' => __( 'Available', 'wc-optic' ),
+					'outOfStockOption' => __( 'Out of stock', 'wc-optic' ),
+					'rupture'        => __( 'Rupture', 'wc-optic' ),
+					'comboUnavailable' => __( 'This combination is not available.', 'wc-optic' ),
 				),
 			)
 		);
@@ -138,7 +141,8 @@ class WC_Optic_Frontend {
 	 * @return bool
 	 */
 	public static function has_child_options( WC_Product $product ) {
-		return ! empty( WC_Optic_SKU::get_purchasable_child_configs( $product ) );
+		$matrix = WC_Optic_SKU::get_storefront_matrix( $product );
+		return ! empty( $matrix['children'] );
 	}
 
 	/**
@@ -211,76 +215,31 @@ class WC_Optic_Frontend {
 	}
 
 	/**
-	 * Render one child selector for a specific eye.
+	 * Render cascading prescription power selectors for one eye.
 	 *
 	 * @param WC_Product $product  Product.
 	 * @param string     $eye      left|right.
 	 * @param bool       $required HTML required attribute.
 	 */
-	public static function render_child_selector( WC_Product $product, $eye, $required = true ) {
-		$eye          = 'right' === $eye ? 'right' : 'left';
-		$children     = self::get_storefront_child_configs( $product );
-		$selector_ui  = WC_Optic_SKU::get_selector_ui( $product );
-		$division     = (string) $product->get_meta( '_optic_division', true );
-		$field_name   = 'wc_optic_' . $eye . '_child';
-		$field_id     = $field_name;
-		$default_id   = '';
-		$label        = 'right' === $eye ? __( 'Right eye (OD)', 'wc-optic' ) : __( 'Left eye (OS)', 'wc-optic' );
+	public static function render_power_selectors( WC_Product $product, $eye, $required = true ) {
+		$eye      = 'right' === $eye ? 'right' : 'left';
+		$division = (string) $product->get_meta( '_optic_division', true );
+		$powers   = $division ? WC_Optic_Plugin::get_powers_for_division( $division ) : array();
+		$req_attr = $required ? ' required' : '';
 
-		foreach ( $children as $config ) {
-			$remaining_stock = WC_Optic_Cart::get_remaining_child_stock( $product, $config );
-			if ( null === $remaining_stock || $remaining_stock > 0 ) {
-				$default_id = ! empty( $config['id'] ) ? (string) $config['id'] : '';
-				break;
-			}
+		echo '<div class="wc-optic-power-selectors" data-eye="' . esc_attr( $eye ) . '">';
+		foreach ( $powers as $power ) {
+			$field_name = 'wc_optic_' . $eye . '_' . $power;
+			$field_id   = $field_name;
+			echo '<p class="wc-optic-power wc-optic-power--' . esc_attr( $power ) . '">';
+			echo '<label for="' . esc_attr( $field_id ) . '">' . esc_html( WC_Optic_Catalog::get_power_field_label( $power ) ) . '</label>';
+			echo '<select name="' . esc_attr( $field_name ) . '" id="' . esc_attr( $field_id ) . '" class="wc-optic-power-dropdown" data-power="' . esc_attr( $power ) . '"' . $req_attr . ' data-placeholder="' . esc_attr__( '— Select —', 'wc-optic' ) . '">';
+			echo '<option value=""></option>';
+			echo '</select>';
+			echo '</p>';
 		}
-
-		echo '<div class="wc-optic-child-selector wc-optic-child-selector--' . esc_attr( $selector_ui ) . '" data-eye="' . esc_attr( $eye ) . '">';
-		echo '<span class="wc-optic-eye-selector-label">' . esc_html( $label ) . '</span>';
-
-		if ( 'radio' === $selector_ui ) {
-			echo '<div class="wc-optic-child-radio-list">';
-			foreach ( $children as $index => $config ) {
-				$child_id        = (string) ( $config['id'] ?? '' );
-				$stock_qty       = WC_Optic_SKU::get_child_stock_qty( $config );
-				$remaining_stock = WC_Optic_Cart::get_remaining_child_stock( $product, $config );
-				$in_stock        = null === $remaining_stock || $remaining_stock > 0;
-				$stock_html = self::render_child_stock_badge( $config );
-				echo '<label class="wc-optic-child-choice' . ( $in_stock ? '' : ' is-out-of-stock' ) . '">';
-				echo '<input type="radio" name="' . esc_attr( $field_name ) . '" value="' . esc_attr( $child_id ) . '" data-price="' . esc_attr( (string) WC_Optic_SKU::get_child_unit_price( $config ) ) . '" data-stock="' . esc_attr( null === $remaining_stock ? '' : (string) $remaining_stock ) . '" ' . checked( $child_id, $default_id, false ) . ( $required ? ' required' : '' ) . ( $in_stock ? '' : ' disabled' ) . ' />';
-				echo '<span class="wc-optic-child-choice__content">';
-				echo '<span class="wc-optic-child-choice__powers">' . wp_kses_post( self::render_child_choice_powers( $config, $division ) ) . '</span>';
-				echo '<span class="wc-optic-child-choice__meta">';
-				echo '<span class="wc-optic-child-choice__price">' . wp_kses_post( wc_price( WC_Optic_SKU::get_child_unit_price( $config ) ) ) . '</span>';
-				echo wp_kses_post( $stock_html );
-				echo '</span>';
-				echo '</span>';
-				echo '</label>';
-			}
-			echo '</div>';
-			echo '</div>';
-			return;
-		}
-
-		echo '<select name="' . esc_attr( $field_name ) . '" id="' . esc_attr( $field_id ) . '" class="wc-optic-child-dropdown" ' . ( $required ? 'required ' : '' ) . 'data-placeholder="' . esc_attr__( '— Select —', 'wc-optic' ) . '">';
-		echo '<option value=""></option>';
-		foreach ( $children as $config ) {
-			$child_id        = (string) ( $config['id'] ?? '' );
-			$stock_qty       = WC_Optic_SKU::get_child_stock_qty( $config );
-			$remaining_stock = WC_Optic_Cart::get_remaining_child_stock( $product, $config );
-			$in_stock        = null === $remaining_stock || $remaining_stock > 0;
-			$text      = WC_Optic_SKU::child_display_label( $config, $division ) . ' - ' . (string) ( $config['sku'] ?? '' );
-			if ( ! $in_stock ) {
-				$text .= ' (' . __( 'Out of stock', 'wc-optic' ) . ')';
-			} elseif ( null !== $stock_qty ) {
-				/* translators: %d: available stock quantity */
-				$text .= ' (' . sprintf( __( 'Available: %d', 'wc-optic' ), $remaining_stock ) . ')';
-			}
-			echo '<option value="' . esc_attr( $child_id ) . '" data-price="' . esc_attr( (string) WC_Optic_SKU::get_child_unit_price( $config ) ) . '" data-stock="' . esc_attr( null === $remaining_stock ? '' : (string) $remaining_stock ) . '" ' . selected( $child_id, $default_id, false ) . ( $in_stock ? '' : ' disabled' ) . '>';
-			echo esc_html( $text );
-			echo '</option>';
-		}
-		echo '</select>';
+		echo '<input type="hidden" name="wc_optic_' . esc_attr( $eye ) . '_child" class="wc-optic-resolved-child" value="" />';
+		echo '<p class="wc-optic-resolution-notice" role="status" hidden></p>';
 		echo '</div>';
 	}
 

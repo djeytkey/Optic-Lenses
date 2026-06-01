@@ -78,6 +78,35 @@ html[dir="rtl"] .wc-optic-eyes--stack {
 	min-width: 3.5rem;
 }
 
+.wc-optic-power-selectors {
+	display: grid;
+	gap: 0.65rem;
+}
+
+.wc-optic-power-dropdown,
+.wc-optic-power-selectors .select2-container {
+	width: 100% !important;
+}
+
+.wc-optic-power-selectors .select2-selection--single {
+	min-height: 38px;
+}
+
+.wc-optic-power-selectors .select2-selection__rendered {
+	line-height: 36px !important;
+}
+
+.wc-optic-resolution-notice {
+	margin: 0.35rem 0 0;
+	font-size: 0.9em;
+	color: #b32d2e;
+}
+
+select.wc-optic-power-dropdown option.wc-optic-option--rupture,
+.select2-results__option[aria-disabled="true"] {
+	color: #787c82;
+}
+
 .wc-optic-child-selector {
 	margin-top: 0;
 }

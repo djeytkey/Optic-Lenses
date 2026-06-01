@@ -16,12 +16,10 @@ if ( ! $division ) {
 	return;
 }
 
-$powers     = WC_Optic_Plugin::get_powers_for_division( $division );
-$divisions  = WC_Optic_Plugin::get_divisions();
-$div_label  = isset( $divisions[ $division ] ) ? $divisions[ $division ]['label'] : $division;
-$children   = WC_Optic_Frontend::get_storefront_child_configs( $product );
-$buyable_children     = WC_Optic_SKU::get_purchasable_child_configs( $product );
-$can_choose_different = count( $buyable_children ) > 1;
+$divisions         = WC_Optic_Plugin::get_divisions();
+$div_label         = isset( $divisions[ $division ] ) ? $divisions[ $division ]['label'] : $division;
+$storefront_matrix = WC_Optic_SKU::get_storefront_matrix( $product );
+$can_choose_different = count( $storefront_matrix['children'] ?? array() ) > 1;
 
 if ( ! WC_Optic_Frontend::has_child_options( $product ) ) {
 	echo '<p class="wc-optic-notice">' . esc_html__( 'This product is not ready for sale yet. Please configure its internal products in the product admin.', 'wc-optic' ) . '</p>';
@@ -46,8 +44,16 @@ do_action( 'woocommerce_before_add_to_cart_form' );
 	</p>
 
 	<?php
-	$initial_child      = ! empty( $buyable_children[0] ) ? $buyable_children[0] : ( ! empty( $children[0] ) ? $children[0] : array() );
-	$initial_unit_price = ! empty( $initial_child ) ? WC_Optic_SKU::get_child_unit_price( $initial_child ) : 0;
+	$initial_unit_price = 0;
+	foreach ( $storefront_matrix['children'] ?? array() as $matrix_child ) {
+		if ( ! empty( $matrix_child['inStock'] ) && ! empty( $matrix_child['price'] ) ) {
+			$initial_unit_price = (float) $matrix_child['price'];
+			break;
+		}
+	}
+	if ( $initial_unit_price <= 0 && ! empty( $storefront_matrix['children'][0]['price'] ) ) {
+		$initial_unit_price = (float) $storefront_matrix['children'][0]['price'];
+	}
 	if ( $initial_unit_price > 0 ) :
 		$initial_qty   = 1;
 		$initial_total = WC_Optic_Pricing::calculate_line_total( $initial_unit_price, $initial_qty );
@@ -81,17 +87,17 @@ do_action( 'woocommerce_before_add_to_cart_form' );
 				</div>
 				<div class="wc-optic-config-table__values">
 					<fieldset class="wc-optic-fieldset">
-						<legend class="screen-reader-text"><?php esc_html_e( 'Internal product', 'wc-optic' ); ?></legend>
+						<legend class="screen-reader-text"><?php esc_html_e( 'Prescription', 'wc-optic' ); ?></legend>
 						<div class="wc-optic-eyes wc-optic-eyes--stack">
 							<div class="wc-optic-eye wc-optic-eye--left" data-eye="left">
 								<span class="wc-optic-eye-title wc-optic-title-both"><?php esc_html_e( 'Both eyes', 'wc-optic' ); ?></span>
 								<span class="wc-optic-eye-title wc-optic-title-left" hidden><?php esc_html_e( 'Left eye (OS)', 'wc-optic' ); ?></span>
-								<?php WC_Optic_Frontend::render_child_selector( $product, 'left', true ); ?>
+								<?php WC_Optic_Frontend::render_power_selectors( $product, 'left', true ); ?>
 							</div>
 
 							<div class="wc-optic-eye wc-optic-eye--right wc-optic-eye--secondary" data-eye="right" hidden>
 								<span class="wc-optic-eye-title"><?php esc_html_e( 'Right eye (OD)', 'wc-optic' ); ?></span>
-								<?php WC_Optic_Frontend::render_child_selector( $product, 'right', false ); ?>
+								<?php WC_Optic_Frontend::render_power_selectors( $product, 'right', false ); ?>
 							</div>
 						</div>
 					</fieldset>

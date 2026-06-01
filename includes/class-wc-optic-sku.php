@@ -206,6 +206,151 @@ class WC_Optic_SKU {
 	}
 
 	/**
+	 * Find one enabled child whose prescription powers match the given catalog ids.
+	 *
+	 * @param WC_Product $product      Product.
+	 * @param array      $power_ids    Map power slug => catalog row id.
+	 * @param bool       $enabled_only Only enabled children.
+	 * @return array<string, mixed>|null
+	 */
+	public static function find_child_by_powers( WC_Product $product, array $power_ids, $enabled_only = true ) {
+		$division = (string) $product->get_meta( '_optic_division', true );
+		if ( ! $division ) {
+			return null;
+		}
+
+		$required   = WC_Optic_Plugin::get_powers_for_division( $division );
+		$normalized = array();
+		foreach ( $required as $power ) {
+			$id = isset( $power_ids[ $power ] ) ? absint( $power_ids[ $power ] ) : 0;
+			if ( ! $id || ! WC_Optic_Catalog::get_valid_term( $id, $power ) ) {
+				return null;
+			}
+			$normalized[ $power ] = $id;
+		}
+
+		$configs = $enabled_only ? self::get_enabled_child_configs( $product ) : self::get_child_configs( $product );
+		foreach ( $configs as $config ) {
+			$match = true;
+			foreach ( $required as $power ) {
+				$child_id = isset( $config['powers'][ $power ] ) ? (int) $config['powers'][ $power ] : 0;
+				if ( $child_id !== $normalized[ $power ] ) {
+					$match = false;
+					break;
+				}
+			}
+			if ( $match ) {
+				return $config;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Ensure no two enabled complete children share the same power combination.
+	 *
+	 * @param array  $child_configs Normalized child configs.
+	 * @param string $division      Division slug.
+	 * @return true|WP_Error
+	 */
+	public static function validate_unique_power_combinations( array $child_configs, $division ) {
+		if ( ! $division ) {
+			return true;
+		}
+
+		$required = WC_Optic_Plugin::get_powers_for_division( $division );
+		$seen     = array();
+
+		foreach ( $child_configs as $config ) {
+			if ( ! self::child_is_enabled( $config ) || ! self::child_is_complete( $config, $division ) ) {
+				continue;
+			}
+
+			$parts = array();
+			foreach ( $required as $power ) {
+				$parts[] = (string) (int) ( $config['powers'][ $power ] ?? 0 );
+			}
+			$key = implode( '|', $parts );
+			if ( isset( $seen[ $key ] ) ) {
+				return new WP_Error(
+					'wc_optic_duplicate_powers',
+					__( 'Two or more internal products use the same prescription combination. Each sellable combination must be unique.', 'wc-optic' )
+				);
+			}
+			$seen[ $key ] = true;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Build storefront cascade data (children + term labels) for JS resolution.
+	 *
+	 * @param WC_Product $product Product.
+	 * @return array<string, mixed>
+	 */
+	public static function get_storefront_matrix( WC_Product $product ) {
+		$division = (string) $product->get_meta( '_optic_division', true );
+		$powers   = $division ? WC_Optic_Plugin::get_powers_for_division( $division ) : array();
+		$children = array();
+		$term_ids = array();
+
+		foreach ( $powers as $power ) {
+			$term_ids[ $power ] = array();
+		}
+
+		foreach ( self::get_enabled_child_configs( $product ) as $config ) {
+			if ( ! self::child_is_complete( $config, $division ) ) {
+				continue;
+			}
+
+			$power_map = array();
+			foreach ( $powers as $power ) {
+				$tid                 = (int) ( $config['powers'][ $power ] ?? 0 );
+				$power_map[ $power ] = $tid;
+				if ( $tid ) {
+					$term_ids[ $power ][ $tid ] = true;
+				}
+			}
+
+			$remaining = WC_Optic_Cart::get_remaining_child_stock( $product, $config );
+			$in_stock  = null === $remaining || $remaining > 0;
+
+			$children[] = array(
+				'id'      => (string) ( $config['id'] ?? '' ),
+				'powers'  => $power_map,
+				'price'   => self::get_child_unit_price( $config ),
+				'stock'   => $remaining,
+				'inStock' => $in_stock,
+			);
+		}
+
+		$terms  = array();
+		$labels = array();
+		foreach ( $powers as $power ) {
+			$labels[ $power ] = WC_Optic_Catalog::get_power_field_label( $power );
+			$terms[ $power ]  = array();
+			if ( empty( $term_ids[ $power ] ) ) {
+				continue;
+			}
+			foreach ( array_keys( $term_ids[ $power ] ) as $tid ) {
+				$row = WC_Optic_Catalog::get_valid_term( (int) $tid, $power );
+				if ( $row ) {
+					$terms[ $power ][ (string) (int) $tid ] = WC_Optic_Catalog::get_display_name( $row );
+				}
+			}
+		}
+
+		return array(
+			'powers'   => $powers,
+			'children' => $children,
+			'terms'    => $terms,
+			'labels'   => $labels,
+		);
+	}
+
+	/**
 	 * Build SKU string for the first enabled child on a product.
 	 *
 	 * @param WC_Product $product Product.

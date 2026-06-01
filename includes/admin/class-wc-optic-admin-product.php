@@ -172,6 +172,15 @@ class WC_Optic_Admin_Product {
 		$raw_children = isset( $_POST['_optic_child_configs'] ) && is_array( $_POST['_optic_child_configs'] ) ? wp_unslash( $_POST['_optic_child_configs'] ) : array();
 		$children     = WC_Optic_SKU::normalize_child_configs( $raw_children, $division );
 
+		$unique = WC_Optic_SKU::validate_unique_power_combinations( $children, $division );
+		if ( is_wp_error( $unique ) ) {
+			WC_Admin_Notices::add_custom_notice(
+				'wc_optic_duplicate_powers',
+				$unique->get_error_message()
+			);
+			return;
+		}
+
 		WC_Optic_SKU::persist_child_data( $product, $children );
 		WC_Optic_SKU::sync_product_sku( $product );
 	}

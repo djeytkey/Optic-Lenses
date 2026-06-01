@@ -94,11 +94,8 @@ class WC_Optic_Cart {
 		$different        = empty( $_POST['wc_optic_different_power'] ) ? false : true;
 		$same             = ! $different;
 		$qty_mode         = $same ? 'single' : 'dual';
-		$available_config = WC_Optic_SKU::get_purchasable_child_configs( $product );
-		$default_child_id = 1 === count( $available_config ) && ! empty( $available_config[0]['id'] ) ? (string) $available_config[0]['id'] : '';
-
-		$left  = self::parse_eye_child( $product, 'left', $division, $default_child_id );
-		$right = $same ? $left : self::parse_eye_child( $product, 'right', $division, $default_child_id );
+		$left  = self::parse_eye_child( $product, 'left', $division );
+		$right = $same ? $left : self::parse_eye_child( $product, 'right', $division );
 
 		if ( is_wp_error( $left ) ) {
 			self::$parse_cache[ $product_id ] = $left;
@@ -107,6 +104,11 @@ class WC_Optic_Cart {
 		if ( is_wp_error( $right ) ) {
 			self::$parse_cache[ $product_id ] = $right;
 			return self::$parse_cache[ $product_id ];
+		}
+
+		if ( ! $same && self::eyes_have_same_selection( $left, $right ) ) {
+			$same  = true;
+			$right = $left;
 		}
 
 		$qty       = isset( $_POST['wc_optic_qty'] ) ? max( 1, (int) $_POST['wc_optic_qty'] ) : 1;
@@ -140,6 +142,8 @@ class WC_Optic_Cart {
 			'line_total'   => 0,
 		);
 
+		$payload = self::normalize_payload_same_eyes( $payload );
+
 		$payload['line_total'] = WC_Optic_Pricing::calculate_payload_total( $payload );
 		$payload['unit_price'] = WC_Optic_Pricing::get_payload_effective_unit_price( $payload );
 
@@ -160,22 +164,30 @@ class WC_Optic_Cart {
 	 * @param WC_Product $product          Product.
 	 * @param string     $eye              left|right.
 	 * @param string     $division         Product division.
-	 * @param string     $default_child_id Default child id when the product has only one sellable option.
 	 * @return array|WP_Error
 	 */
-	protected static function parse_eye_child( WC_Product $product, $eye, $division, $default_child_id = '' ) {
-		$key      = 'wc_optic_' . $eye . '_child';
-		$child_id = isset( $_POST[ $key ] ) ? sanitize_key( wp_unslash( $_POST[ $key ] ) ) : '';
-		if ( '' === $child_id && '' !== $default_child_id ) {
-			$child_id = $default_child_id;
-		}
-		if ( '' === $child_id ) {
-			return new WP_Error( 'wc_optic', __( 'Please select a valid internal product before adding to cart.', 'wc-optic' ) );
+	protected static function parse_eye_child( WC_Product $product, $eye, $division ) {
+		$eye          = 'right' === $eye ? 'right' : 'left';
+		$power_types  = WC_Optic_Plugin::get_powers_for_division( $division );
+		$power_ids    = array();
+		$powers_ready = true;
+
+		foreach ( $power_types as $power ) {
+			$key = 'wc_optic_' . $eye . '_' . $power;
+			if ( ! isset( $_POST[ $key ] ) || '' === trim( (string) wp_unslash( $_POST[ $key ] ) ) ) {
+				$powers_ready = false;
+				break;
+			}
+			$power_ids[ $power ] = absint( wp_unslash( $_POST[ $key ] ) );
 		}
 
-		$config = WC_Optic_SKU::find_child_config( $product, $child_id, true );
+		if ( ! $powers_ready ) {
+			return new WP_Error( 'wc_optic', __( 'Please select all prescription values before adding to cart.', 'wc-optic' ) );
+		}
+
+		$config = WC_Optic_SKU::find_child_by_powers( $product, $power_ids, true );
 		if ( ! $config ) {
-			return new WP_Error( 'wc_optic', __( 'Please choose a valid internal product.', 'wc-optic' ) );
+			return new WP_Error( 'wc_optic', __( 'This prescription combination is not available.', 'wc-optic' ) );
 		}
 
 		$powers = array();
@@ -1094,13 +1106,90 @@ class WC_Optic_Cart {
 	 * @return string
 	 */
 	protected static function get_effective_qty_mode( array $payload ) {
-		$left_child  = isset( $payload['left']['child_id'] ) ? (string) $payload['left']['child_id'] : '';
-		$right_child = isset( $payload['right']['child_id'] ) ? (string) $payload['right']['child_id'] : '';
+		$left  = isset( $payload['left'] ) && is_array( $payload['left'] ) ? $payload['left'] : array();
+		$right = isset( $payload['right'] ) && is_array( $payload['right'] ) ? $payload['right'] : array();
+
+		if ( self::eyes_have_same_selection( $left, $right ) ) {
+			return 'single';
+		}
+
+		$left_child  = isset( $left['child_id'] ) ? (string) $left['child_id'] : '';
+		$right_child = isset( $right['child_id'] ) ? (string) $right['child_id'] : '';
 		if ( $left_child && $right_child && $left_child !== $right_child ) {
 			return 'dual';
 		}
 
 		return ( isset( $payload['qty_mode'] ) && 'dual' === $payload['qty_mode'] ) ? 'dual' : 'single';
+	}
+
+	/**
+	 * Whether both eyes resolved to the same internal product / prescription.
+	 *
+	 * @param array $left  Left eye payload.
+	 * @param array $right Right eye payload.
+	 * @return bool
+	 */
+	protected static function eyes_have_same_selection( array $left, array $right ) {
+		$left_id  = isset( $left['child_id'] ) ? (string) $left['child_id'] : '';
+		$right_id = isset( $right['child_id'] ) ? (string) $right['child_id'] : '';
+		if ( $left_id && $right_id ) {
+			return $left_id === $right_id;
+		}
+
+		$left_powers  = isset( $left['powers'] ) && is_array( $left['powers'] ) ? $left['powers'] : array();
+		$right_powers = isset( $right['powers'] ) && is_array( $right['powers'] ) ? $right['powers'] : array();
+		if ( empty( $left_powers ) || empty( $right_powers ) ) {
+			return false;
+		}
+
+		$keys = array_unique( array_merge( array_keys( $left_powers ), array_keys( $right_powers ) ) );
+		foreach ( $keys as $power ) {
+			$lid = isset( $left_powers[ $power ]['id'] ) ? (int) $left_powers[ $power ]['id'] : 0;
+			$rid = isset( $right_powers[ $power ]['id'] ) ? (int) $right_powers[ $power ]['id'] : 0;
+			if ( $lid !== $rid ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Collapse dual-eye payload when both eyes share the same prescription.
+	 *
+	 * @param array $payload Optic payload.
+	 * @return array
+	 */
+	protected static function normalize_payload_same_eyes( array $payload ) {
+		$left  = isset( $payload['left'] ) && is_array( $payload['left'] ) ? $payload['left'] : array();
+		$right = isset( $payload['right'] ) && is_array( $payload['right'] ) ? $payload['right'] : array();
+
+		if ( ! self::eyes_have_same_selection( $left, $right ) ) {
+			return $payload;
+		}
+
+		$was_dual  = ( isset( $payload['qty_mode'] ) && 'dual' === $payload['qty_mode'] );
+		$qty_left  = max( 0, (int) ( $payload['qty_left'] ?? 0 ) );
+		$qty_right = max( 0, (int) ( $payload['qty_right'] ?? 0 ) );
+
+		$payload['same_power'] = true;
+		$payload['qty_mode']   = 'single';
+		$payload['right']      = $left;
+
+		if ( $qty_left > 0 && $qty_right > 0 ) {
+			$payload['qty_single'] = $qty_left + $qty_right;
+			$payload['line_qty']   = $payload['qty_single'];
+		} elseif ( $was_dual && (int) ( $payload['line_qty'] ?? 0 ) > 0 ) {
+			$payload['qty_single'] = max( 1, (int) $payload['line_qty'] );
+		} elseif ( empty( $payload['qty_single'] ) && ! empty( $payload['line_qty'] ) ) {
+			$payload['qty_single'] = max( 1, (int) $payload['line_qty'] );
+		}
+
+		if ( empty( $payload['line_qty'] ) && ! empty( $payload['qty_single'] ) ) {
+			$payload['line_qty'] = max( 1, (int) $payload['qty_single'] );
+		}
+
+		return $payload;
 	}
 
 	/**
@@ -1114,7 +1203,7 @@ class WC_Optic_Cart {
 			return $cart_item;
 		}
 
-		$payload  = $cart_item[ self::CART_KEY ];
+		$payload  = self::normalize_payload_same_eyes( $cart_item[ self::CART_KEY ] );
 		$line_qty = isset( $cart_item['quantity'] ) ? max( 1, (int) $cart_item['quantity'] ) : ( isset( $payload['line_qty'] ) ? max( 1, (int) $payload['line_qty'] ) : 1 );
 		$qty_mode = self::get_effective_qty_mode( $payload );
 
