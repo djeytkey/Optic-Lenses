@@ -737,7 +737,10 @@ class WC_Optic_Cart {
 				continue;
 			}
 			$type_label = WC_Optic_Catalog::get_type_label( (string) $power );
-			$items[]    = '<li class="wc-optic-line-summary__power-item"><span class="wc-optic-line-summary__power-key">' . esc_html( $type_label ) . '</span> <span class="wc-optic-line-summary__power-val">' . esc_html( $label ) . '</span></li>';
+			$items[]    = '<li class="wc-optic-line-summary__power-item wc-optic-ltr" dir="ltr">'
+				. '<span class="wc-optic-line-summary__power-key">' . esc_html( $type_label ) . '</span>'
+				. '<span class="wc-optic-line-summary__power-val">' . esc_html( $label ) . '</span>'
+				. '</li>';
 		}
 
 		if ( empty( $items ) ) {

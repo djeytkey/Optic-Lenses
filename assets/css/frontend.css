@@ -70,7 +70,7 @@ html[dir="rtl"] .wc-optic-eyes--stack {
 }
 
 .wc-optic-ltr {
-	unicode-bidi: embed;
+	unicode-bidi: isolate;
 }
 
 .wc-optic-power label {
@@ -170,8 +170,23 @@ select.wc-optic-power-dropdown option.wc-optic-option--rupture,
 }
 
 .wc-optic-child-choice__power-item {
+	display: flex;
+	flex-direction: row;
+	align-items: baseline;
+	gap: 0.35em;
 	list-style: none;
 	margin: 0 0 0.2rem;
+	direction: ltr;
+	unicode-bidi: isolate;
+}
+
+.wc-optic-child-choice__power-key {
+	font-weight: 600;
+}
+
+.wc-optic-child-choice__power-key::after {
+	content: ":";
+	margin-inline-start: 0.1em;
 }
 
 .wc-optic-child-choice__meta {
@@ -401,12 +416,66 @@ dl.variation:has(> dd.variation-optic-line) {
 	list-style: none;
 }
 
+.wc-optic-line-summary__power-item {
+	display: flex;
+	flex-direction: row;
+	align-items: baseline;
+	gap: 0.35em;
+	direction: ltr;
+	unicode-bidi: isolate;
+}
+
 .wc-optic-line-summary__power-item + .wc-optic-line-summary__power-item {
 	margin-top: 0.2rem;
 }
 
 .wc-optic-line-summary__power-key {
 	font-weight: 600;
+	flex-shrink: 0;
+}
+
+.wc-optic-line-summary__power-key::after {
+	content: ":";
+	margin-inline-start: 0.1em;
+}
+
+.wc-optic-line-summary__power-val {
+	unicode-bidi: isolate;
+}
+
+/* RTL (Arabic): align power rows to the right; order stays SPH → value (LTR inside each row). */
+html[dir="rtl"] .wc-optic-line-summary__meta-row--powers,
+[dir="rtl"] .wc-optic-line-summary__meta-row--powers {
+	align-items: flex-end;
+	text-align: right;
+}
+
+html[dir="rtl"] .wc-optic-line-summary__powers,
+[dir="rtl"] .wc-optic-line-summary__powers {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	width: 100%;
+}
+
+html[dir="rtl"] .wc-optic-line-summary__power-item,
+[dir="rtl"] .wc-optic-line-summary__power-item {
+	justify-content: flex-end;
+	width: 100%;
+}
+
+html[dir="rtl"] .wc-optic-child-choice__powers-list,
+[dir="rtl"] .wc-optic-child-choice__powers-list {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	width: 100%;
+}
+
+html[dir="rtl"] .wc-optic-child-choice__power-item,
+[dir="rtl"] .wc-optic-child-choice__power-item {
+	justify-content: flex-end;
+	width: 100%;
 }
 
 .wc-optic-cart-eye-prices {

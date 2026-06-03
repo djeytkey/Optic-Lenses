@@ -312,8 +312,9 @@ class WC_Optic_Frontend {
 				continue;
 			}
 
-			$html .= '<li class="wc-optic-child-choice__power-item">';
-			$html .= esc_html( WC_Optic_Catalog::get_power_field_label( $power ) . ': ' . WC_Optic_Catalog::get_display_name( $row ) );
+			$html .= '<li class="wc-optic-child-choice__power-item wc-optic-ltr" dir="ltr">';
+			$html .= '<span class="wc-optic-child-choice__power-key">' . esc_html( WC_Optic_Catalog::get_power_field_label( $power ) ) . '</span>';
+			$html .= '<span class="wc-optic-child-choice__power-val">' . esc_html( WC_Optic_Catalog::get_display_name( $row ) ) . '</span>';
 			$html .= '</li>';
 		}
 		$html .= '</ul>';
