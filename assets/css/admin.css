@@ -193,12 +193,18 @@
 
 #optic_product_data_panel .wc-optic-child-fields-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-	gap: 0.75em 1em;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.75em 1.25em;
 }
 
 #optic_product_data_panel .wc-optic-child-fields-grid .form-field {
 	margin: 0;
+	min-width: 0;
+}
+
+#optic_product_data_panel .wc-optic-child-fields-grid .select2-container {
+	width: 100% !important;
+	max-width: 100%;
 }
 
 #optic_product_data_panel .wc-optic-child-enabled {
