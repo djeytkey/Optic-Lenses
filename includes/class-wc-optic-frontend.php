@@ -50,12 +50,18 @@ class WC_Optic_Frontend {
 	 * @return string
 	 */
 	public static function locate_template( $template, $template_name, $template_path ) {
-		if ( 'single-product/add-to-cart/optic_product.php' === $template_name ) {
+		$plugin_templates = array(
+			'single-product/add-to-cart/optic_product.php',
+			'cart/cart-item-data.php',
+		);
+
+		if ( in_array( $template_name, $plugin_templates, true ) ) {
 			$plugin = WC_OPTIC_PLUGIN_DIR . 'templates/' . $template_name;
 			if ( is_readable( $plugin ) ) {
 				return $plugin;
 			}
 		}
+
 		return $template;
 	}
 

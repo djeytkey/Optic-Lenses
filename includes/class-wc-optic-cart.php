@@ -698,7 +698,8 @@ class WC_Optic_Cart {
 		if ( '' !== $powers_html ) {
 			echo '<div class="wc-optic-line-summary__meta-row wc-optic-line-summary__meta-row--powers">';
 			echo '<span class="wc-optic-line-summary__meta-label">' . esc_html__( 'Powers', 'wc-optic' ) . '</span>';
-			echo '<span class="wc-optic-line-summary__meta-value">' . $powers_html . '</span>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built in format_eye_powers_html().
+			echo $powers_html;
 			echo '</div>';
 		}
 
