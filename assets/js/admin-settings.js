@@ -11,6 +11,48 @@
 	}
 
 	/**
+	 * Build one empty division row.
+	 *
+	 * @return {jQuery}
+	 */
+	function buildEmptyDivisionRow() {
+		var suffix = newRowSuffix();
+		var pf = 'wc_optic_division[' + suffix + ']';
+		var powersHtml = '';
+		( wcOpticAdmin.divisionPowers || [] ).forEach( function ( power ) {
+			var id = 'wc-optic-power-' + suffix + '-' + power;
+			var label =
+				wcOpticAdmin.divisionPowerLabels && wcOpticAdmin.divisionPowerLabels[ power ]
+					? wcOpticAdmin.divisionPowerLabels[ power ]
+					: power.toUpperCase();
+			powersHtml +=
+				'<label for="' +
+				id +
+				'" class="wc-optic-division-power-label">' +
+				'<input type="checkbox" id="' +
+				id +
+				'" name="' +
+				pf +
+				'[powers][]" value="' +
+				power +
+				'" /> ' +
+				label +
+				'</label> ';
+		} );
+		var html =
+			'<tr class="wc-optic-division-row wc-optic-new-division-row">' +
+			'<td><input type="text" name="' +
+			pf +
+			'[label]" value="" class="regular-text wc-optic-division-label" autocomplete="off" /></td>' +
+			'<td class="wc-optic-division-powers">' +
+			powersHtml +
+			'</td>' +
+			'<td></td>' +
+			'</tr>';
+		return $( html );
+	}
+
+	/**
 	 * Append one empty catalog row to the settings table.
 	 *
 	 * @return {jQuery}
@@ -108,6 +150,33 @@
 			var $tr = buildEmptyRow();
 			$tbody.append( $tr );
 			$tr.find( '.wc-optic-catalog-name' ).first().trigger( 'focus' );
+		} );
+
+		$( '#wc-optic-add-division' ).on( 'click', function () {
+			var $tbody = $( 'table.wc-optic-divisions-table tbody' );
+			if ( ! $tbody.length ) {
+				return;
+			}
+			var $tr = buildEmptyDivisionRow();
+			$tbody.append( $tr );
+			$tr.find( '.wc-optic-division-label' ).first().trigger( 'focus' );
+		} );
+
+		$( document ).on( 'click', '.wc-optic-remove-division', function ( e ) {
+			e.preventDefault();
+			var $btn = $( this );
+			var $tr = $btn.closest( 'tr' );
+			var name = $.trim( $tr.find( '.wc-optic-division-label' ).first().val() || '' );
+			var msg = wcOpticAdmin.i18n.confirmDivisionDelete;
+			if ( name ) {
+				msg += '\n\n' + name;
+			}
+			if ( ! window.confirm( msg ) ) {
+				return;
+			}
+			$tr.fadeOut( 200, function () {
+				$( this ).remove();
+			} );
 		} );
 
 		$( document ).on( 'click', '.wc-optic-delete-row', function ( e ) {

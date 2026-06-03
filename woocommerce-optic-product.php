@@ -47,6 +47,8 @@ register_activation_hook( __FILE__, 'wc_optic_activate_plugin' );
  */
 function wc_optic_activate_plugin() {
 	WC_Optic_Database::activate();
+	require_once WC_OPTIC_PLUGIN_DIR . 'includes/class-wc-optic-divisions.php';
+	WC_Optic_Divisions::maybe_seed_defaults();
 	update_option( 'wc_optic_pending_wpml_config', '1', false );
 }
 

@@ -46,6 +46,7 @@ class WC_Optic_Plugin {
 
 		WC_Optic_Database::maybe_upgrade_schema();
 		WC_Optic_Database::ensure_product_type_term();
+		WC_Optic_Divisions::maybe_seed_defaults();
 
 		add_filter( 'woocommerce_product_class', array( $this, 'product_class' ), 10, 2 );
 		add_filter( 'product_type_selector', array( $this, 'product_type_selector' ) );
@@ -93,30 +94,7 @@ class WC_Optic_Plugin {
 	 * @return array<string, array{label:string, powers:string[]}>
 	 */
 	public static function get_divisions() {
-		$divisions = array(
-			'color_lenses'       => array(
-				'label'  => __( 'Color lenses', 'wc-optic' ),
-				'powers' => array( 'sph' ),
-			),
-			'sama_color_lenses'  => array(
-				'label'  => __( 'SAMA Color Lenses', 'wc-optic' ),
-				'powers' => array( 'sph', 'cyl', 'axis' ),
-			),
-			'astigmatism_toric'  => array(
-				'label'  => __( 'Astigmatism Toric', 'wc-optic' ),
-				'powers' => array( 'sph', 'cyl', 'axis' ),
-			),
-			'multifocal_bifocal' => array(
-				'label'  => __( 'Multifocal Bifocal', 'wc-optic' ),
-				'powers' => array( 'sph', 'add' ),
-			),
-		);
-
-		foreach ( $divisions as $slug => $def ) {
-			$divisions[ $slug ]['label'] = apply_filters( 'wc_optic_division_label', $def['label'], $slug );
-		}
-
-		return $divisions;
+		return WC_Optic_Divisions::get_all();
 	}
 
 	/**

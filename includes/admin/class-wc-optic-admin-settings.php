@@ -64,6 +64,15 @@ class WC_Optic_Admin_Settings {
 					'deleteFailed'         => __( 'Could not delete the entry.', 'wc-optic' ),
 					'affectedNoticeTitle'  => __( 'These products still reference the deleted catalog value. Update their optic configuration (SKU components) where needed:', 'wc-optic' ),
 					'affectedNone'         => __( 'No products were using this value.', 'wc-optic' ),
+					'confirmDivisionDelete' => __( 'Remove this division from the list? Save changes to apply.', 'wc-optic' ),
+					'divisionPowerRequired' => __( 'Select at least one power for each division.', 'wc-optic' ),
+				),
+				'divisionPowers' => WC_Optic_Divisions::get_available_powers(),
+				'divisionPowerLabels' => array_map(
+					function ( $power ) {
+						return WC_Optic_Divisions::get_power_label( $power );
+					},
+					array_combine( WC_Optic_Divisions::get_available_powers(), WC_Optic_Divisions::get_available_powers() )
 				),
 			)
 		);
@@ -84,6 +93,7 @@ class WC_Optic_Admin_Settings {
 		}
 
 		self::handle_global_settings_save();
+		self::handle_divisions_save();
 
 		$requested = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'section'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( 'deletion_log' === $requested ) {
@@ -101,6 +111,7 @@ class WC_Optic_Admin_Settings {
 		echo '<div class="wrap woocommerce" id="wc-optic-settings-root" data-active-tab="' . esc_attr( $active ) . '">';
 		echo '<h1>' . esc_html__( 'Optic Settings', 'wc-optic' ) . '</h1>';
 		self::render_global_settings_panel();
+		self::render_divisions_panel();
 		echo '<h2 class="nav-tab-wrapper">';
 		foreach ( WC_Optic_Catalog::TYPES as $type ) {
 			$url   = admin_url( 'admin.php?page=wc-optic-settings&tab=' . $type );
@@ -174,6 +185,192 @@ class WC_Optic_Admin_Settings {
 		echo '<p><button type="submit" class="button button-secondary">' . esc_html__( 'Save global settings', 'wc-optic' ) . '</button></p>';
 		echo '</div>';
 		echo '</form>';
+	}
+
+	/**
+	 * Render configurable optical divisions panel.
+	 */
+	protected static function render_divisions_panel() {
+		$divisions = WC_Optic_Divisions::get_all();
+		// Reload stored labels without WPML filter for editing.
+		$stored = get_option( WC_Optic_Divisions::OPTION_KEY, null );
+		if ( is_array( $stored ) && ! empty( $stored ) ) {
+			$divisions = $stored;
+		}
+
+		echo '<form method="post" action="" class="wc-optic-divisions-settings">';
+		wp_nonce_field( 'wc_optic_divisions_save', 'wc_optic_divisions_nonce' );
+		echo '<div class="notice inline wc-optic-divisions-settings-box">';
+		echo '<p><strong>' . esc_html__( 'Optical divisions', 'wc-optic' ) . '</strong></p>';
+		echo '<p class="description">' . esc_html__( 'Each division defines which prescription powers (SPH, CYL, AXIS, ADD) apply to optic products assigned to it.', 'wc-optic' ) . '</p>';
+
+		echo '<table class="widefat striped wc-optic-divisions-table"><thead><tr>';
+		echo '<th>' . esc_html__( 'Division name', 'wc-optic' ) . '</th>';
+		echo '<th>' . esc_html__( 'Associated powers', 'wc-optic' ) . '</th>';
+		echo '<th>' . esc_html__( 'Actions', 'wc-optic' ) . '</th>';
+		echo '</tr></thead><tbody>';
+
+		foreach ( $divisions as $slug => $def ) {
+			self::render_division_row( $slug, $def, (string) $slug );
+		}
+		self::render_division_row( '', array( 'label' => '', 'powers' => array() ), 'new_' . wp_unique_id() );
+
+		echo '</tbody></table>';
+
+		echo '<p class="wc-optic-divisions-toolbar">';
+		echo '<button type="button" class="button" id="wc-optic-add-division">' . esc_html__( 'Add division', 'wc-optic' ) . '</button>';
+		echo '</p>';
+
+		echo '<p><button type="submit" class="button button-secondary">' . esc_html__( 'Save divisions', 'wc-optic' ) . '</button></p>';
+		echo '</div>';
+		echo '</form>';
+	}
+
+	/**
+	 * One division settings row.
+	 *
+	 * @param string                               $slug   Division slug (empty for new).
+	 * @param array{label:string, powers:string[]} $def    Division data.
+	 * @param string                               $suffix Form array key suffix.
+	 */
+	protected static function render_division_row( $slug, array $def, $suffix ) {
+		$pf     = 'wc_optic_division[' . $suffix . ']';
+		$label  = isset( $def['label'] ) ? (string) $def['label'] : '';
+		$powers = isset( $def['powers'] ) && is_array( $def['powers'] ) ? $def['powers'] : array();
+		$slug   = sanitize_key( (string) $slug );
+
+		echo '<tr class="wc-optic-division-row">';
+		echo '<td>';
+		echo '<input type="text" name="' . esc_attr( $pf ) . '[label]" value="' . esc_attr( $label ) . '" class="regular-text wc-optic-division-label" autocomplete="off" />';
+		if ( '' !== $slug ) {
+			echo '<input type="hidden" name="' . esc_attr( $pf ) . '[slug]" value="' . esc_attr( $slug ) . '" />';
+		}
+		echo '</td>';
+		echo '<td class="wc-optic-division-powers">';
+		foreach ( WC_Optic_Divisions::get_available_powers() as $power ) {
+			$checked = in_array( $power, $powers, true );
+			$id      = 'wc-optic-power-' . $suffix . '-' . $power;
+			echo '<label for="' . esc_attr( $id ) . '" class="wc-optic-division-power-label">';
+			echo '<input type="checkbox" id="' . esc_attr( $id ) . '" name="' . esc_attr( $pf ) . '[powers][]" value="' . esc_attr( $power ) . '" ' . checked( $checked, true, false ) . ' /> ';
+			echo esc_html( WC_Optic_Divisions::get_power_label( $power ) );
+			echo '</label> ';
+		}
+		echo '</td>';
+		echo '<td>';
+		if ( '' !== $slug ) {
+			$delete_label = sprintf(
+				/* translators: %s: division name */
+				__( 'Remove division %s', 'wc-optic' ),
+				$label
+			);
+			echo '<button type="button" class="button-link-delete wc-optic-remove-division" aria-label="' . esc_attr( $delete_label ) . '">';
+			echo '<span class="dashicons dashicons-trash" aria-hidden="true"></span>';
+			echo '</button>';
+		}
+		echo '</td>';
+		echo '</tr>';
+	}
+
+	/**
+	 * Save optical divisions from settings form.
+	 */
+	protected static function handle_divisions_save() {
+		if ( empty( $_POST['wc_optic_divisions_nonce'] ) ) {
+			return;
+		}
+
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['wc_optic_divisions_nonce'] ) ), 'wc_optic_divisions_save' ) ) {
+			return;
+		}
+
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			return;
+		}
+
+		if ( empty( $_POST['wc_optic_division'] ) || ! is_array( $_POST['wc_optic_division'] ) ) {
+			return;
+		}
+
+		$parsed  = WC_Optic_Divisions::parse_form_rows( wp_unslash( $_POST['wc_optic_division'] ) ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+		$blocked = WC_Optic_Divisions::find_blocked_removals( $parsed['divisions'] );
+
+		if ( ! empty( $blocked ) ) {
+			$current = get_option( WC_Optic_Divisions::OPTION_KEY, null );
+			if ( ! is_array( $current ) || empty( $current ) ) {
+				$current = WC_Optic_Divisions::get_default_divisions();
+			}
+			foreach ( array_keys( $blocked ) as $slug ) {
+				if ( isset( $current[ $slug ] ) ) {
+					$parsed['divisions'][ $slug ] = $current[ $slug ];
+				}
+			}
+		}
+
+		if ( empty( $parsed['divisions'] ) ) {
+			add_action(
+				'admin_notices',
+				function () {
+					echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'At least one division with a name and at least one power is required.', 'wc-optic' ) . '</p></div>';
+				}
+			);
+			return;
+		}
+
+		WC_Optic_Divisions::save( $parsed['divisions'] );
+
+		add_action(
+			'admin_notices',
+			function () use ( $parsed, $blocked ) {
+				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Optical divisions saved.', 'wc-optic' ) . '</p></div>';
+				if ( ! empty( $blocked ) ) {
+					echo '<div class="notice notice-warning is-dismissible"><p>';
+					echo esc_html__( 'Some divisions could not be removed because products still use them:', 'wc-optic' );
+					echo '</p><ul>';
+					foreach ( $blocked as $slug => $products ) {
+						$names = array_map(
+							function ( $p ) {
+								return $p['name'] . ' (#' . $p['id'] . ')';
+							},
+							$products
+						);
+						echo '<li><strong>' . esc_html( $slug ) . '</strong>: ' . esc_html( implode( ', ', $names ) ) . '</li>';
+					}
+					echo '</ul></div>';
+				}
+				if ( $parsed['skipped_incomplete'] > 0 ) {
+					echo '<div class="notice notice-warning is-dismissible"><p>';
+					echo esc_html(
+						sprintf(
+							/* translators: %d: number of incomplete rows */
+							_n(
+								'%d division was not saved because a name and at least one power are required.',
+								'%d divisions were not saved because a name and at least one power are required.',
+								$parsed['skipped_incomplete'],
+								'wc-optic'
+							),
+							$parsed['skipped_incomplete']
+						)
+					);
+					echo '</p></div>';
+				}
+				if ( $parsed['skipped_duplicate'] > 0 ) {
+					echo '<div class="notice notice-warning is-dismissible"><p>';
+					echo esc_html(
+						sprintf(
+							/* translators: %d: number of rows skipped */
+							_n(
+								'%d division was not saved because another entry with the same name already exists.',
+								'%d divisions were not saved because other entries with the same name already exist.',
+								$parsed['skipped_duplicate'],
+								'wc-optic'
+							),
+							$parsed['skipped_duplicate']
+						)
+					);
+					echo '</p></div>';
+				}
+			}
+		);
 	}
 
 	/**

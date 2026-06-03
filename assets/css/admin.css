@@ -27,6 +27,50 @@
 	margin: 1em 0 1.25em;
 }
 
+.wc-optic-divisions-settings {
+	margin: 0 0 1.25em;
+}
+
+.wc-optic-divisions-settings-box {
+	padding: 1em 1.25em;
+}
+
+.wc-optic-divisions-settings-box p:first-child {
+	margin-top: 0;
+}
+
+.wc-optic-divisions-table .wc-optic-division-powers {
+	white-space: nowrap;
+}
+
+.wc-optic-division-power-label {
+	display: inline-block;
+	margin-right: 0.75em;
+	white-space: nowrap;
+}
+
+.wc-optic-divisions-table .wc-optic-remove-division {
+	vertical-align: middle;
+	line-height: 1;
+	padding: 2px 4px;
+}
+
+.wc-optic-divisions-table .wc-optic-remove-division .dashicons {
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+	vertical-align: middle;
+}
+
+.wc-optic-divisions-toolbar {
+	margin: 1em 0;
+}
+
+.wc-optic-divisions-table th,
+.wc-optic-divisions-table td {
+	vertical-align: middle;
+}
+
 .wc-optic-global-settings-box {
 	padding: 1em 1.25em;
 }
