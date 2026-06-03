@@ -632,18 +632,118 @@ class WC_Optic_Cart {
 		if ( empty( $cart_item[ self::CART_KEY ] ) || ! is_array( $cart_item[ self::CART_KEY ] ) ) {
 			return $item_data;
 		}
-		$o = $cart_item[ self::CART_KEY ];
+
+		$html = self::render_line_summary_html( $cart_item[ self::CART_KEY ] );
+		if ( '' === $html ) {
+			return $item_data;
+		}
 
 		$item_data[] = array(
-			'name'  => __( 'Internal SKUs', 'wc-optic' ),
-			'value' => self::format_internal_skus_plain( $o ),
-		);
-		$item_data[] = array(
-			'name'  => __( 'Eye quantities', 'wc-optic' ),
-			'value' => self::format_eye_quantities_plain( $o ),
+			'key'     => 'optic-line',
+			'display' => $html,
 		);
 
 		return $item_data;
+	}
+
+	/**
+	 * Cart/checkout HTML summary (two eye columns, no SKU / QR).
+	 *
+	 * @param array $payload Optic line payload.
+	 * @return string Safe HTML.
+	 */
+	public static function render_line_summary_html( array $payload ) {
+		$payload = self::normalize_payload_same_eyes( $payload );
+		$same    = self::payload_uses_single_eye_display( $payload );
+
+		ob_start();
+		echo '<div class="wc-optic-line-summary' . ( $same ? ' wc-optic-line-summary--same-power' : '' ) . '">';
+		echo '<div class="wc-optic-line-summary__eyes">';
+		if ( $same ) {
+			self::render_line_eye_column( 'left', $payload, true );
+		} else {
+			self::render_line_eye_column( 'left', $payload, false );
+			self::render_line_eye_column( 'right', $payload, false );
+		}
+		echo '</div>';
+		echo '</div>';
+
+		return (string) ob_get_clean();
+	}
+
+	/**
+	 * One eye column for cart/checkout summary.
+	 *
+	 * @param string $eye_key  left|right.
+	 * @param array  $payload  Optic payload.
+	 * @param bool   $combined Same power on both eyes.
+	 */
+	protected static function render_line_eye_column( $eye_key, array $payload, $combined = false ) {
+		$eye  = isset( $payload[ $eye_key ] ) && is_array( $payload[ $eye_key ] ) ? $payload[ $eye_key ] : array();
+		$col  = 'left' === $eye_key ? 'os' : 'od';
+		$data = self::get_eye_admin_summary( $eye_key, $payload, $combined );
+
+		if ( $combined ) {
+			$title = __( 'Both eyes — same power', 'wc-optic' );
+		} else {
+			$title = 'left' === $eye_key ? __( 'OS — left eye', 'wc-optic' ) : __( 'OD — right eye', 'wc-optic' );
+		}
+
+		$powers_html = self::format_eye_powers_html( $eye );
+
+		echo '<div class="wc-optic-line-summary__eye wc-optic-line-summary__eye--' . esc_attr( $col ) . '">';
+		echo '<div class="wc-optic-line-summary__eye-title">' . esc_html( $title ) . '</div>';
+		echo '<div class="wc-optic-line-summary__eye-meta">';
+
+		if ( '' !== $powers_html ) {
+			echo '<div class="wc-optic-line-summary__meta-row wc-optic-line-summary__meta-row--powers">';
+			echo '<span class="wc-optic-line-summary__meta-label">' . esc_html__( 'Powers', 'wc-optic' ) . '</span>';
+			echo '<span class="wc-optic-line-summary__meta-value">' . $powers_html . '</span>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+			echo '</div>';
+		}
+
+		if ( $data['unit_price'] > 0 ) {
+			echo '<div class="wc-optic-line-summary__meta-row">';
+			echo '<span class="wc-optic-line-summary__meta-label">' . esc_html__( 'Unit price', 'wc-optic' ) . '</span>';
+			echo '<span class="wc-optic-line-summary__meta-value">' . wp_kses_post( wc_price( $data['unit_price'] ) ) . '</span>';
+			echo '</div>';
+		}
+
+		echo '<div class="wc-optic-line-summary__meta-row">';
+		echo '<span class="wc-optic-line-summary__meta-label">' . esc_html__( 'Quantity', 'wc-optic' ) . '</span>';
+		echo '<span class="wc-optic-line-summary__meta-value">' . esc_html( (string) $data['qty'] ) . '</span>';
+		echo '</div>';
+
+		echo '</div>';
+		echo '</div>';
+	}
+
+	/**
+	 * Format selected powers for one eye as HTML.
+	 *
+	 * @param array $eye Eye payload (left|right).
+	 * @return string HTML or empty.
+	 */
+	protected static function format_eye_powers_html( array $eye ) {
+		if ( empty( $eye['powers'] ) || ! is_array( $eye['powers'] ) ) {
+			return '';
+		}
+
+		$items = array();
+		foreach ( $eye['powers'] as $power => $data ) {
+			$label = is_array( $data ) && isset( $data['label'] ) ? trim( (string) $data['label'] ) : '';
+			if ( '' === $label ) {
+				continue;
+			}
+			$type_label = WC_Optic_Catalog::get_type_label( (string) $power );
+			$items[]    = '<li class="wc-optic-line-summary__power-item"><span class="wc-optic-line-summary__power-key">' . esc_html( $type_label ) . '</span> <span class="wc-optic-line-summary__power-val">' . esc_html( $label ) . '</span></li>';
+		}
+
+		if ( empty( $items ) ) {
+			return '';
+		}
+
+		return '<ul class="wc-optic-line-summary__powers">' . implode( '', $items ) . '</ul>';
 	}
 
 	/**
@@ -1453,7 +1553,7 @@ class WC_Optic_Cart {
 	 * Enqueue cart JS.
 	 */
 	public static function enqueue_cart_scripts() {
-		if ( ! is_cart() ) {
+		if ( ! is_cart() && ! is_checkout() ) {
 			return;
 		}
 		wp_enqueue_style(

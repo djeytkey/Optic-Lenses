@@ -279,6 +279,101 @@ select.wc-optic-power-dropdown option.wc-optic-option--rupture,
 	font-size: 1.05em;
 }
 
+/* Cart / checkout — optic line summary (no SKU / QR). */
+dl.variation dt.variation-optic-line {
+	display: none;
+}
+
+dl.variation dd.variation-optic-line {
+	margin: 0.5em 0 0;
+	padding: 0;
+	border: 0;
+}
+
+.wc-optic-line-summary {
+	display: block;
+	width: 100%;
+	max-width: 100%;
+	box-sizing: border-box;
+}
+
+.wc-optic-line-summary__eyes {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: nowrap;
+	align-items: stretch;
+	gap: 1rem;
+	direction: ltr;
+	width: 100%;
+}
+
+.wc-optic-line-summary__eye {
+	flex: 1 1 0;
+	min-width: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+	padding: 0.75rem 0.85rem;
+	border: 1px solid rgba(0, 0, 0, 0.12);
+	border-radius: 6px;
+	background: rgba(0, 0, 0, 0.03);
+	box-sizing: border-box;
+}
+
+.wc-optic-line-summary--same-power .wc-optic-line-summary__eyes {
+	display: block;
+	max-width: 280px;
+}
+
+.wc-optic-line-summary__eye-title {
+	font-size: 0.75rem;
+	font-weight: 700;
+	letter-spacing: 0.02em;
+	text-transform: uppercase;
+	color: inherit;
+	opacity: 0.85;
+	border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+	padding-bottom: 0.35rem;
+	margin-bottom: 0.15rem;
+}
+
+.wc-optic-line-summary__eye-meta {
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+
+.wc-optic-line-summary__meta-row {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+}
+
+.wc-optic-line-summary__meta-label {
+	font-size: 0.7rem;
+	font-weight: 600;
+	opacity: 0.75;
+}
+
+.wc-optic-line-summary__meta-value {
+	font-size: 0.85rem;
+	font-weight: 500;
+}
+
+.wc-optic-line-summary__powers {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.wc-optic-line-summary__power-item + .wc-optic-line-summary__power-item {
+	margin-top: 0.2rem;
+}
+
+.wc-optic-line-summary__power-key {
+	font-weight: 600;
+}
+
 .wc-optic-cart-eye-prices {
 	display: grid;
 	gap: 0.25rem;
@@ -339,6 +434,14 @@ select.wc-optic-power-dropdown option.wc-optic-option--rupture,
 	.wc-optic-eye-title,
 	.wc-optic-eye-selector-label {
 		display: block;
+	}
+
+	.wc-optic-line-summary__eyes {
+		flex-direction: column;
+	}
+
+	.wc-optic-line-summary--same-power .wc-optic-line-summary__eyes {
+		max-width: none;
 	}
 }
 
