@@ -15,6 +15,11 @@
 		return fallback || '';
 	}
 
+	function isDifferentPowerMode() {
+		var $cb = $( '#wc_optic_different_power' );
+		return $cb.length > 0 && $cb.is( ':checked' );
+	}
+
 	function formatPrice( amount ) {
 		if ( typeof wcOpticFront === 'undefined' ) {
 			return String( amount );
@@ -308,7 +313,7 @@
 	}
 
 	function hasValidPurchasableSelection() {
-		var different = $( '#wc_optic_different_power' ).is( ':checked' );
+		var different = isDifferentPowerMode();
 		var samePowers = eyesHaveSameSelection();
 		var left = resolveChildForEye( 'left' );
 		if ( ! left || ! childHasStock( left ) ) {
@@ -369,7 +374,7 @@
 	}
 
 	function getPricingState() {
-		var different = $( '#wc_optic_different_power' ).is( ':checked' );
+		var different = isDifferentPowerMode();
 		var samePowers = eyesHaveSameSelection();
 		var same = ! different || samePowers;
 		var perEye = different && ! samePowers;
@@ -402,7 +407,7 @@
 	}
 
 	function syncLineQuantity() {
-		var perEye = $( '#wc_optic_different_power' ).is( ':checked' );
+		var perEye = isDifferentPowerMode();
 		var q = 1;
 		if ( perEye ) {
 			var l = parseInt( $( '#wc_optic_qty_left' ).val(), 10 ) || 0;
@@ -433,12 +438,10 @@
 	}
 
 	function syncQuantityStockLimits() {
-		var different = $( '#wc_optic_different_power' ).is( ':checked' );
+		var different = isDifferentPowerMode();
 		var samePowers = eyesHaveSameSelection();
 		var leftData = getEyeResolvedData( 'left' );
 		var rightData = different && ! samePowers ? getEyeResolvedData( 'right' ) : leftData;
-		var leftStock = leftData.inStock ? leftData.stock : 0;
-		var rightStock = rightData.inStock ? rightData.stock : 0;
 
 		if ( different && ! samePowers ) {
 			applyMaxValue( $( '#wc_optic_qty_left' ), leftData.inStock ? leftData.stock : 0 );
@@ -464,7 +467,7 @@
 		if ( ! $btn.length ) {
 			return;
 		}
-		var different = $( '#wc_optic_different_power' ).is( ':checked' );
+		var different = isDifferentPowerMode();
 		var samePowers = eyesHaveSameSelection();
 		var leftOk = getEyeResolvedData( 'left' ).inStock && resolveChildForEye( 'left' );
 		var rightOk = different && ! samePowers ? ( getEyeResolvedData( 'right' ).inStock && resolveChildForEye( 'right' ) ) : leftOk;
@@ -473,7 +476,7 @@
 	}
 
 	function toggleSamePower() {
-		var different = $( '#wc_optic_different_power' ).is( ':checked' );
+		var different = isDifferentPowerMode();
 		var same = ! different;
 		var $right = $( '.wc-optic-eye--right' );
 		var $both = $( '.wc-optic-title-both' );
@@ -513,7 +516,7 @@
 			index = 0;
 		}
 		refreshEyeCascade( eye, index );
-		if ( ! $( '#wc_optic_different_power' ).is( ':checked' ) && eye === 'left' ) {
+		if ( ! isDifferentPowerMode() && eye === 'left' ) {
 			syncRightPowersFromLeft();
 		}
 		syncQuantityStockLimits();
@@ -546,12 +549,12 @@
 		} );
 
 		$form.on( 'submit', function ( e ) {
-			if ( ! $( '#wc_optic_different_power' ).is( ':checked' ) ) {
+			if ( ! isDifferentPowerMode() ) {
 				syncRightPowersFromLeft();
 			}
 			syncLineQuantity();
 
-			var different = $( '#wc_optic_different_power' ).is( ':checked' );
+			var different = isDifferentPowerMode();
 			var samePowers = eyesHaveSameSelection();
 			var validateRight = different && ! samePowers;
 

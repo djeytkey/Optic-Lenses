@@ -285,6 +285,103 @@ class WC_Optic_SKU {
 	}
 
 	/**
+	 * Ensure every child has all catalog and division power selects filled.
+	 *
+	 * @param array  $child_configs Normalized child configs.
+	 * @param string $division      Division slug.
+	 * @param array  $raw_configs   Raw POST child configs keyed by form suffix.
+	 * @return true|WP_Error
+	 */
+	public static function validate_child_configs_complete( array $child_configs, $division, array $raw_configs = array() ) {
+		if ( ! $division ) {
+			return new WP_Error(
+				'wc_optic_missing_division',
+				__( 'Optical division is required.', 'wc-optic' )
+			);
+		}
+
+		if ( empty( $child_configs ) ) {
+			return new WP_Error(
+				'wc_optic_missing_child',
+				__( 'At least one internal product is required.', 'wc-optic' )
+			);
+		}
+
+		$power_types    = WC_Optic_Catalog::get_power_types();
+		$allowed_powers = WC_Optic_Plugin::get_powers_for_division( $division );
+		$raw_list       = array_values( $raw_configs );
+
+		foreach ( $child_configs as $index => $config ) {
+			$position = $index + 1;
+			$raw      = isset( $raw_list[ $index ] ) && is_array( $raw_list[ $index ] ) ? $raw_list[ $index ] : array();
+			$label    = ! empty( $config['label'] ) ? (string) $config['label'] : sprintf(
+				/* translators: %d: child config position */
+				__( 'Product %d', 'wc-optic' ),
+				$position
+			);
+
+			$raw_label = isset( $raw['label'] ) ? trim( sanitize_text_field( (string) $raw['label'] ) ) : '';
+			if ( '' === $raw_label ) {
+				return new WP_Error(
+					'wc_optic_incomplete_child',
+					sprintf(
+						/* translators: %d: internal product position */
+						__( 'Internal product #%1$d requires a label.', 'wc-optic' ),
+						$position
+					)
+				);
+			}
+
+			if ( '' === trim( (string) ( $config['unit_price'] ?? '' ) ) ) {
+				return new WP_Error(
+					'wc_optic_incomplete_child',
+					sprintf(
+						/* translators: %s: internal product label */
+						__( 'Internal product "%s" requires a unit price.', 'wc-optic' ),
+						$label
+					)
+				);
+			}
+
+			if ( ! isset( $config['stock_qty'] ) || '' === trim( (string) $config['stock_qty'] ) ) {
+				return new WP_Error(
+					'wc_optic_incomplete_child',
+					sprintf(
+						/* translators: %s: internal product label */
+						__( 'Internal product "%s" requires a stock quantity.', 'wc-optic' ),
+						$label
+					)
+				);
+			}
+
+			foreach ( array_keys( self::META_KEYS ) as $type ) {
+				if ( in_array( $type, $power_types, true ) ) {
+					if ( ! in_array( $type, $allowed_powers, true ) ) {
+						continue;
+					}
+					$value = isset( $config['powers'][ $type ] ) ? (int) $config['powers'][ $type ] : 0;
+				} else {
+					$value = isset( $config['catalog'][ $type ] ) ? (int) $config['catalog'][ $type ] : 0;
+				}
+
+				if ( $value <= 0 ) {
+					return new WP_Error(
+						'wc_optic_incomplete_child',
+						sprintf(
+							/* translators: 1: internal product label, 2: catalog field label */
+							__( 'Internal product "%1$s" is missing a required value for %2$s.', 'wc-optic' ),
+							$label,
+							WC_Optic_Catalog::get_type_label( $type )
+						)
+					);
+				}
+			}
+		}
+
+		return true;
+	}
+
+	/**
 	 * Build storefront cascade data (children + term labels) for JS resolution.
 	 *
 	 * @param WC_Product $product Product.

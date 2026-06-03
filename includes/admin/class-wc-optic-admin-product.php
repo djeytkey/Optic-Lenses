@@ -59,23 +59,16 @@ class WC_Optic_Admin_Product {
 		woocommerce_wp_select(
 			array(
 				'id'                => '_optic_division',
-				'label'             => __( 'Optical division', 'wc-optic' ),
+				'label'             => __( 'Optical division', 'wc-optic' ) . ' <abbr class="required" title="' . esc_attr__( 'required', 'woocommerce' ) . '">*</abbr>',
 				'options'           => self::division_options( (string) $product->get_meta( '_optic_division', true ) ),
 				'value'             => $product->get_meta( '_optic_division', true ),
 				'class'             => 'wc-enhanced-select wc-optic-select2',
 				'wrapper_class'     => 'form-field-wide',
 				'custom_attributes' => array(
 					'data-placeholder' => __( '— Select —', 'wc-optic' ),
+					'required'         => 'required',
+					'aria-required'    => 'true',
 				),
-			)
-		);
-
-		woocommerce_wp_checkbox(
-			array(
-				'id'          => '_optic_default_qty_per_eye',
-				'label'       => __( 'Quantity per eye (default ON)', 'wc-optic' ),
-				'description' => __( 'When enabled, the product defaults to separate left/right quantities on the product page.', 'wc-optic' ),
-				'value'       => 'yes' === $product->get_meta( '_optic_default_qty_per_eye', true ) ? 'yes' : 'no',
 			)
 		);
 
@@ -180,11 +173,20 @@ class WC_Optic_Admin_Product {
 		if ( $division && ! isset( $divs[ $division ] ) ) {
 			$division = '';
 		}
-		$product->update_meta_data( '_optic_division', $division );
-		$product->update_meta_data( '_optic_default_qty_per_eye', isset( $_POST['_optic_default_qty_per_eye'] ) ? 'yes' : 'no' );
 
 		$raw_children = isset( $_POST['_optic_child_configs'] ) && is_array( $_POST['_optic_child_configs'] ) ? wp_unslash( $_POST['_optic_child_configs'] ) : array();
 		$children     = WC_Optic_SKU::normalize_child_configs( $raw_children, $division );
+
+		$complete = WC_Optic_SKU::validate_child_configs_complete( $children, $division, $raw_children );
+		if ( is_wp_error( $complete ) ) {
+			WC_Admin_Notices::add_custom_notice(
+				'wc_optic_incomplete_child',
+				$complete->get_error_message()
+			);
+			return;
+		}
+
+		$product->update_meta_data( '_optic_division', $division );
 
 		$unique = WC_Optic_SKU::validate_unique_power_combinations( $children, $division );
 		if ( is_wp_error( $unique ) ) {
@@ -295,7 +297,10 @@ class WC_Optic_Admin_Product {
 			'wc_optic_child_' . $index_token . '_label',
 			__( 'Label', 'wc-optic' ),
 			(string) ( $config['label'] ?? '' ),
-			'wc-optic-child-label'
+			'wc-optic-child-label',
+			'text',
+			array(),
+			true
 		);
 
 		self::render_child_text_input(
@@ -303,7 +308,10 @@ class WC_Optic_Admin_Product {
 			'wc_optic_child_' . $index_token . '_unit_price',
 			__( 'Unit price', 'wc-optic' ),
 			(string) ( $config['unit_price'] ?? '' ),
-			'wc-optic-child-unit-price wc_input_price'
+			'wc-optic-child-unit-price wc_input_price',
+			'text',
+			array(),
+			true
 		);
 
 		self::render_child_text_input(
@@ -316,7 +324,8 @@ class WC_Optic_Admin_Product {
 			array(
 				'min'  => '0',
 				'step' => '1',
-			)
+			),
+			true
 		);
 
 		echo '<div class="wc-optic-child-fields-grid">';
@@ -350,15 +359,25 @@ class WC_Optic_Admin_Product {
 	 * @param string $class      CSS classes.
 	 * @param string $type       Input type.
 	 * @param array  $attributes HTML attributes.
+	 * @param bool   $required   Whether the field is required.
 	 */
-	protected static function render_child_text_input( $name, $id, $label, $value, $class = '', $type = 'text', array $attributes = array() ) {
+	protected static function render_child_text_input( $name, $id, $label, $value, $class = '', $type = 'text', array $attributes = array(), $required = false ) {
+		if ( $required ) {
+			$attributes['required']      = 'required';
+			$attributes['aria-required'] = 'true';
+		}
+
 		$attrs = '';
 		foreach ( $attributes as $attr_key => $attr_value ) {
 			$attrs .= ' ' . sanitize_key( $attr_key ) . '="' . esc_attr( (string) $attr_value ) . '"';
 		}
 
 		echo '<p class="form-field form-field-wide">';
-		echo '<label for="' . esc_attr( $id ) . '">' . esc_html( $label ) . '</label>';
+		echo '<label for="' . esc_attr( $id ) . '">' . esc_html( $label );
+		if ( $required ) {
+			echo ' <abbr class="required" title="' . esc_attr__( 'required', 'woocommerce' ) . '">*</abbr>';
+		}
+		echo '</label>';
 		echo '<input type="' . esc_attr( $type ) . '" class="' . esc_attr( $class ) . '" name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '" value="' . esc_attr( $value ) . '"' . $attrs . ' />';
 		echo '</p>';
 	}
@@ -382,8 +401,8 @@ class WC_Optic_Admin_Product {
 		}
 
 		echo '<p class="' . esc_attr( $wrapper ) . '" data-optic-type="' . esc_attr( $type ) . '">';
-		echo '<label for="' . esc_attr( $id ) . '">' . esc_html( self::type_label( $type ) ) . '</label>';
-		echo '<select name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '" class="wc-enhanced-select wc-optic-select2 wc-optic-child-select" data-optic-type="' . esc_attr( $type ) . '" data-is-power="' . esc_attr( $is_power ? '1' : '0' ) . '" data-placeholder="' . esc_attr__( '- Select -', 'wc-optic' ) . '">';
+		echo '<label for="' . esc_attr( $id ) . '">' . esc_html( self::type_label( $type ) ) . ' <abbr class="required" title="' . esc_attr__( 'required', 'woocommerce' ) . '">*</abbr></label>';
+		echo '<select name="' . esc_attr( $name ) . '" id="' . esc_attr( $id ) . '" class="wc-enhanced-select wc-optic-select2 wc-optic-child-select" data-optic-type="' . esc_attr( $type ) . '" data-is-power="' . esc_attr( $is_power ? '1' : '0' ) . '" data-placeholder="' . esc_attr__( '- Select -', 'wc-optic' ) . '" required aria-required="true">';
 		echo '<option value=""></option>';
 		foreach ( WC_Optic_Catalog::get_terms( $type ) as $row ) {
 			echo '<option value="' . esc_attr( (string) $row->id ) . '" ' . selected( (int) $selected, (int) $row->id, false ) . '>' . esc_html( WC_Optic_Catalog::get_display_name( $row ) ) . '</option>';

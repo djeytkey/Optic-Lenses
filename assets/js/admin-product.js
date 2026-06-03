@@ -51,12 +51,27 @@
 			{
 				width: '100%',
 				minimumResultsForSearch: 0,
-				allowClear: true,
+				allowClear: ! $el.prop( 'required' ),
 				closeOnSelect: ! $el.prop( 'multiple' ),
 				placeholder: $el.data( 'placeholder' ) || '',
 			},
 			getSelect2Language()
 		);
+	}
+
+	function setSelectRequired( $select, required ) {
+		if ( ! $select || ! $select.length ) {
+			return;
+		}
+		if ( required ) {
+			$select.prop( 'required', true ).attr( 'aria-required', 'true' );
+		} else {
+			$select.prop( 'required', false ).removeAttr( 'aria-required' );
+		}
+		if ( $select.hasClass( 'enhanced' ) ) {
+			destroySelect2( $select );
+			initSelect2( $select );
+		}
 	}
 
 	function destroySelect2( $el ) {
@@ -132,16 +147,23 @@
 			var show = type && allowed.indexOf( type ) !== -1;
 
 			if ( ! show ) {
+				setSelectRequired( $select, false );
 				destroySelect2( $select );
 				$select.val( '' );
 				$row.hide();
 				return;
 			}
 
+			setSelectRequired( $select, true );
 			$row.show();
 			initSelect2( $select );
 		} );
 
+		getChildBlocks().find( '.wc-optic-child-field:not(.wc-optic-child-power) select.wc-optic-child-select' ).each( function () {
+			setSelectRequired( $( this ), true );
+		} );
+
+		setSelectRequired( $( '#_optic_division' ), true );
 		initSelect2( $( '#_optic_division' ) );
 	}
 
