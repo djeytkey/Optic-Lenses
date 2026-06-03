@@ -279,6 +279,12 @@ select.wc-optic-power-dropdown option.wc-optic-option--rupture,
 	font-size: 1.05em;
 }
 
+/* Flatsome: hide duplicate mobile price/qty when optic summary is in product-name. */
+.product-name:has(.wc-optic-line-summary) .show-for-small.mobile-product-price,
+.product-name:has(dd.variation-optic-line) .show-for-small.mobile-product-price {
+	display: none !important;
+}
+
 /* Cart / checkout — optic line summary (no SKU / QR). */
 td.product-name dl.variation,
 .product-name dl.variation {
