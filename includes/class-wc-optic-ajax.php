@@ -107,9 +107,12 @@ class WC_Optic_Ajax {
 
 		$child_config = isset( $_POST['child_config'] ) && is_array( $_POST['child_config'] ) ? wp_unslash( $_POST['child_config'] ) : array();
 
+		$sku = WC_Optic_SKU::build_from_catalog_ids( $child_config, $division );
+
 		wp_send_json_success(
 			array(
-				'sku' => WC_Optic_SKU::build_from_catalog_ids( $child_config, $division ),
+				'sku'     => $sku,
+				'qr_html' => WC_Optic_QR::render_admin_block( $sku ),
 			)
 		);
 	}

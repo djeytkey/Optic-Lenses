@@ -341,10 +341,19 @@ class WC_Optic_Admin_Product {
 		}
 		echo '</div>';
 
+		$child_sku = (string) ( $config['sku'] ?? '' );
 		echo '<p class="form-field form-field-wide wc-optic-child-sku">';
 		echo '<label>' . esc_html__( 'SKU preview', 'wc-optic' ) . '</label>';
-		echo '<code class="wc-optic-child-sku-preview">' . esc_html( (string) ( $config['sku'] ?? '' ) ) . '</code>';
+		echo '<code class="wc-optic-child-sku-preview">' . esc_html( $child_sku ) . '</code>';
 		echo '</p>';
+		echo '<div class="form-field form-field-wide wc-optic-child-qr-wrap">';
+		echo '<label>' . esc_html__( 'Preparation QR code', 'wc-optic' ) . '</label>';
+		echo '<div class="wc-optic-child-qr">';
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built via WC_Optic_QR::render_admin_block().
+		echo WC_Optic_QR::render_admin_block( $child_sku );
+		echo '</div>';
+		echo '<p class="description">' . esc_html__( 'Admin only — scan during order preparation. Not shown to customers.', 'wc-optic' ) . '</p>';
+		echo '</div>';
 
 		echo '</div>';
 	}

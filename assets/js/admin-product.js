@@ -207,8 +207,14 @@
 		};
 
 		$.post( wcOpticAdmin.ajaxUrl, data, function ( res ) {
-			if ( res && res.success && res.data && typeof res.data.sku === 'string' ) {
+			if ( ! res || ! res.success || ! res.data ) {
+				return;
+			}
+			if ( typeof res.data.sku === 'string' ) {
 				$block.find( '.wc-optic-child-sku-preview' ).text( res.data.sku );
+			}
+			if ( typeof res.data.qr_html === 'string' ) {
+				$block.find( '.wc-optic-child-qr' ).html( res.data.qr_html );
 			}
 		} );
 	}

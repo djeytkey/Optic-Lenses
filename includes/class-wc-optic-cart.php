@@ -33,6 +33,7 @@ class WC_Optic_Cart {
 		add_filter( 'woocommerce_admin_html_order_item_class', array( __CLASS__, 'add_admin_order_item_class' ), 20, 3 );
 		add_action( 'woocommerce_after_order_itemmeta', array( __CLASS__, 'render_admin_order_item_summary' ), 20, 3 );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_order_assets' ) );
+		add_filter( 'admin_body_class', array( __CLASS__, 'admin_order_body_class' ) );
 		add_filter( 'woocommerce_get_item_data', array( __CLASS__, 'get_item_data' ), 10, 2 );
 		add_filter( 'woocommerce_cart_item_price', array( __CLASS__, 'cart_item_price' ), 10, 3 );
 		add_filter( 'woocommerce_cart_item_subtotal', array( __CLASS__, 'cart_item_subtotal' ), 10, 3 );
@@ -122,7 +123,9 @@ class WC_Optic_Cart {
 			}
 			$line_qty = $qty_left + $qty_right;
 		} else {
-			$line_qty = $qty;
+			$line_qty  = $qty;
+			$qty_left  = 0;
+			$qty_right = 0;
 		}
 
 		$payload = array(
@@ -329,7 +332,7 @@ class WC_Optic_Cart {
 	 * @return string
 	 */
 	public static function add_admin_order_item_class( $class, $item, $order ) {
-		if ( self::get_order_item_optic_payload( $item ) ) {
+		if ( $item instanceof WC_Order_Item_Product && self::order_item_is_optic( $item ) ) {
 			$class = trim( $class . ' wc-optic-order-item' );
 		}
 
@@ -349,22 +352,237 @@ class WC_Optic_Cart {
 			return;
 		}
 
+		$payload  = self::normalize_payload_same_eyes( $payload );
 		$order    = $item instanceof WC_Order_Item_Product ? $item->get_order() : null;
 		$currency = $order instanceof WC_Order ? $order->get_currency() : '';
-		$rows     = array(
-			__( 'Internal SKUs', 'wc-optic' )  => self::format_internal_skus_plain( $payload ),
-			__( 'Eye pricing', 'wc-optic' )    => self::format_eye_pricing_plain( $payload, $currency ),
-			__( 'Eye quantities', 'wc-optic' ) => self::format_eye_quantities_plain( $payload ),
-		);
+		$same     = self::payload_uses_single_eye_display( $payload );
 
-		echo '<div class="wc-optic-order-summary">';
-		foreach ( $rows as $label => $value ) {
-			echo '<div class="wc-optic-order-summary__row">';
-			echo '<span class="wc-optic-order-summary__label">' . esc_html( $label ) . '</span>';
-			echo '<span class="wc-optic-order-summary__value">' . esc_html( $value ) . '</span>';
-			echo '</div>';
+		echo '<div class="wc-optic-order-summary' . ( $same ? ' wc-optic-order-summary--same-power' : '' ) . '">';
+		echo '<div class="wc-optic-order-summary__eyes">';
+		if ( $same ) {
+			self::render_admin_order_eye_column( 'left', $payload, $currency, true );
+		} else {
+			self::render_admin_order_eye_column( 'left', $payload, $currency, false );
+			self::render_admin_order_eye_column( 'right', $payload, $currency, false );
 		}
 		echo '</div>';
+		echo '</div>';
+	}
+
+	/**
+	 * Render one eye column in the admin order optic summary (OS left, OD right).
+	 *
+	 * @param string $eye_key  left|right.
+	 * @param array  $payload  Optic payload.
+	 * @param string $currency Order currency.
+	 */
+	protected static function render_admin_order_eye_column( $eye_key, array $payload, $currency = '', $combined = false ) {
+		$data = self::get_eye_admin_summary( $eye_key, $payload, $combined );
+		$col  = 'left' === $eye_key ? 'os' : 'od';
+		if ( $combined ) {
+			$title = __( 'Both eyes — same power', 'wc-optic' );
+		} else {
+			$title = 'left' === $eye_key ? __( 'OS — left eye', 'wc-optic' ) : __( 'OD — right eye', 'wc-optic' );
+		}
+
+		echo '<div class="wc-optic-order-summary__eye wc-optic-order-summary__eye--' . esc_attr( $col ) . '">';
+		echo '<div class="wc-optic-order-summary__eye-title">' . esc_html( $title ) . '</div>';
+
+		echo '<div class="wc-optic-order-summary__eye-meta">';
+		if ( '' !== $data['display'] ) {
+			self::render_admin_order_meta_row( __( 'Internal product', 'wc-optic' ), $data['display'] );
+		}
+		if ( '' !== $data['sku'] ) {
+			self::render_admin_order_meta_row( __( 'Internal SKU', 'wc-optic' ), $data['sku'] );
+		}
+		if ( $data['unit_price'] > 0 ) {
+			self::render_admin_order_meta_row(
+				__( 'Unit price', 'wc-optic' ),
+				self::format_plain_price( $data['unit_price'], $currency )
+			);
+		}
+		self::render_admin_order_meta_row( __( 'Quantity', 'wc-optic' ), (string) $data['qty'] );
+		echo '</div>';
+
+		if ( '' !== $data['sku'] ) {
+			echo '<div class="wc-optic-order-summary__eye-qr">';
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built via WC_Optic_QR.
+			echo WC_Optic_QR::render_admin_block( $data['sku'], '', 148 );
+			echo '</div>';
+		}
+
+		echo '</div>';
+	}
+
+	/**
+	 * One label/value row inside an eye column.
+	 *
+	 * @param string $label Row label.
+	 * @param string $value Row value.
+	 */
+	protected static function render_admin_order_meta_row( $label, $value ) {
+		echo '<div class="wc-optic-order-summary__meta-row">';
+		echo '<span class="wc-optic-order-summary__meta-label">' . esc_html( $label ) . '</span>';
+		echo '<span class="wc-optic-order-summary__meta-value">' . esc_html( $value ) . '</span>';
+		echo '</div>';
+	}
+
+	/**
+	 * Per-eye data for admin order summary columns.
+	 *
+	 * @param string $eye_key left|right.
+	 * @param array  $payload Optic payload.
+	 * @return array{display:string, sku:string, unit_price:float, qty:int}
+	 */
+	protected static function get_eye_admin_summary( $eye_key, array $payload, $combined = false ) {
+		$eye = isset( $payload[ $eye_key ] ) && is_array( $payload[ $eye_key ] ) ? $payload[ $eye_key ] : array();
+
+		if ( $combined || self::payload_uses_single_eye_display( $payload ) ) {
+			$qty = self::get_combined_line_quantity( $payload );
+		} elseif ( 'dual' === self::get_effective_qty_mode( $payload ) ) {
+			$qty = 'left' === $eye_key
+				? max( 1, (int) ( $payload['qty_left'] ?? 1 ) )
+				: max( 1, (int) ( $payload['qty_right'] ?? 1 ) );
+		} else {
+			$qty = self::get_combined_line_quantity( $payload );
+		}
+
+		return array(
+			'display'    => isset( $eye['display'] ) ? trim( (string) $eye['display'] ) : '',
+			'sku'        => isset( $eye['sku'] ) ? trim( (string) $eye['sku'] ) : '',
+			'unit_price' => isset( $eye['unit_price'] ) ? (float) wc_format_decimal( $eye['unit_price'] ) : 0.0,
+			'qty'        => $qty,
+		);
+	}
+
+	/**
+	 * Whether the order line should show one combined eye block (same power / same SKU).
+	 *
+	 * @param array $payload Optic payload.
+	 * @return bool
+	 */
+	protected static function payload_uses_single_eye_display( array $payload ) {
+		if ( ! empty( $payload['same_power'] ) ) {
+			return true;
+		}
+
+		if ( 'single' === ( $payload['qty_mode'] ?? '' ) ) {
+			return true;
+		}
+
+		$left  = isset( $payload['left'] ) && is_array( $payload['left'] ) ? $payload['left'] : array();
+		$right = isset( $payload['right'] ) && is_array( $payload['right'] ) ? $payload['right'] : array();
+
+		return self::eyes_have_same_selection( $left, $right );
+	}
+
+	/**
+	 * Shared line quantity when both eyes use the same internal product.
+	 *
+	 * @param array $payload Optic payload.
+	 * @return int
+	 */
+	protected static function get_combined_line_quantity( array $payload ) {
+		if ( isset( $payload['qty_single'] ) && (int) $payload['qty_single'] > 0 ) {
+			return max( 1, (int) $payload['qty_single'] );
+		}
+
+		if ( isset( $payload['line_qty'] ) && (int) $payload['line_qty'] > 0 ) {
+			return max( 1, (int) $payload['line_qty'] );
+		}
+
+		$qty_left  = max( 0, (int) ( $payload['qty_left'] ?? 0 ) );
+		$qty_right = max( 0, (int) ( $payload['qty_right'] ?? 0 ) );
+
+		if ( $qty_left > 0 && $qty_right > 0 && $qty_left === $qty_right ) {
+			return $qty_left;
+		}
+
+		return max( 1, $qty_left, $qty_right );
+	}
+
+	/**
+	 * Whether an order line item is an optic product line.
+	 *
+	 * @param WC_Order_Item_Product $item Order item.
+	 * @return bool
+	 */
+	protected static function order_item_is_optic( WC_Order_Item_Product $item ) {
+		if ( self::get_order_item_optic_payload( $item ) ) {
+			return true;
+		}
+
+		$product = $item->get_product();
+
+		return $product && 'optic_product' === $product->get_type();
+	}
+
+	/**
+	 * Whether every product line on the order is an optic line.
+	 *
+	 * @param WC_Order $order Order.
+	 * @return bool
+	 */
+	protected static function order_has_only_optic_products( WC_Order $order ) {
+		$items = $order->get_items( 'line_item' );
+		if ( empty( $items ) ) {
+			return false;
+		}
+
+		foreach ( $items as $item ) {
+			if ( ! $item instanceof WC_Order_Item_Product || ! self::order_item_is_optic( $item ) ) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/**
+	 * Resolve the order being edited on admin order screens.
+	 *
+	 * @return WC_Order|null
+	 */
+	protected static function get_admin_order_being_edited() {
+		global $theorder;
+
+		if ( $theorder instanceof WC_Order ) {
+			return $theorder;
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['post'] ) ) {
+			$order_id = absint( wp_unslash( $_GET['post'] ) );
+			if ( $order_id && 'shop_order' === get_post_type( $order_id ) ) {
+				return wc_get_order( $order_id );
+			}
+		}
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['id'], $_GET['page'] ) && 'wc-orders' === sanitize_key( wp_unslash( $_GET['page'] ) ) ) {
+			return wc_get_order( absint( wp_unslash( $_GET['id'] ) ) );
+		}
+
+		return null;
+	}
+
+	/**
+	 * Add body class on optic-only admin orders (column layout CSS).
+	 *
+	 * @param string $classes Space-separated body classes.
+	 * @return string
+	 */
+	public static function admin_order_body_class( $classes ) {
+		if ( ! self::is_admin_order_screen() ) {
+			return $classes;
+		}
+
+		$order = self::get_admin_order_being_edited();
+		if ( ! $order instanceof WC_Order || ! self::order_has_only_optic_products( $order ) ) {
+			return $classes;
+		}
+
+		return $classes . ' wc-optic-admin-order-only';
 	}
 
 	/**
@@ -375,18 +593,11 @@ class WC_Optic_Cart {
 			return;
 		}
 
-		wp_enqueue_style( 'woocommerce_admin_styles' );
-		wp_add_inline_style(
-			'woocommerce_admin_styles',
-			'.woocommerce_order_items.wc-optic-order-only th.item_cost,
-			.woocommerce_order_items.wc-optic-order-only td.item_cost,
-			.woocommerce_order_items.wc-optic-order-only th.quantity,
-			.woocommerce_order_items.wc-optic-order-only td.quantity { display: none; }
-			.wc-optic-order-summary { margin-top: 10px; padding: 10px 12px; border: 1px solid #dcdcde; border-radius: 6px; background: #f6f7f7; }
-			.wc-optic-order-summary__row { display: flex; gap: 10px; align-items: flex-start; }
-			.wc-optic-order-summary__row + .wc-optic-order-summary__row { margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; }
-			.wc-optic-order-summary__label { min-width: 110px; color: #50575e; font-weight: 600; }
-			.wc-optic-order-summary__value { color: #1d2327; font-weight: 500; }'
+		wp_enqueue_style(
+			'wc-optic-admin-order',
+			WC_OPTIC_PLUGIN_URL . 'assets/css/admin-order.css',
+			array( 'woocommerce_admin_styles' ),
+			WC_OPTIC_VERSION
 		);
 
 		wp_add_inline_script(
@@ -397,6 +608,7 @@ class WC_Optic_Cart {
 					var $rows = $table.find("tbody#order_line_items tr.item");
 					if ($rows.length && $rows.length === $rows.filter(".wc-optic-order-item").length) {
 						$table.addClass("wc-optic-order-only");
+						$("body").addClass("wc-optic-admin-order-only");
 					}
 					$table.find(".wc-optic-order-item table.display_meta").each(function(){
 						if (!$(this).find("tr").length) {
@@ -532,7 +744,7 @@ class WC_Optic_Cart {
 		if ( empty( $values[ self::CART_KEY ] ) || ! is_array( $values[ self::CART_KEY ] ) ) {
 			return;
 		}
-		$o = $values[ self::CART_KEY ];
+		$o = self::normalize_payload_same_eyes( $values[ self::CART_KEY ] );
 		$item->add_meta_data( '_wc_optic_payload', wp_json_encode( $o ), true );
 		$item->add_meta_data( __( 'Internal SKUs', 'wc-optic' ), self::format_internal_skus_plain( $o ), true );
 		$item->add_meta_data( __( 'Eye pricing', 'wc-optic' ), self::format_eye_pricing_plain( $o, $order->get_currency() ), true );
@@ -606,10 +818,14 @@ class WC_Optic_Cart {
 	 * @return string
 	 */
 	protected static function format_eye_quantities_plain( array $o ) {
+		$o = self::normalize_payload_same_eyes( $o );
+		if ( self::payload_uses_single_eye_display( $o ) ) {
+			return __( 'Both eyes', 'wc-optic' ) . ': ' . self::get_combined_line_quantity( $o );
+		}
+
 		$qty_mode = self::get_effective_qty_mode( $o );
 		if ( 'dual' !== $qty_mode ) {
-			$qty = isset( $o['qty_single'] ) ? max( 1, (int) $o['qty_single'] ) : ( isset( $o['line_qty'] ) ? max( 1, (int) $o['line_qty'] ) : 1 );
-			return 'Same: ' . $qty;
+			return __( 'Both eyes', 'wc-optic' ) . ': ' . self::get_combined_line_quantity( $o );
 		}
 
 		$qty_right = isset( $o['qty_right'] ) ? max( 1, (int) $o['qty_right'] ) : 1;
@@ -626,13 +842,19 @@ class WC_Optic_Cart {
 	 * @return string
 	 */
 	protected static function format_eye_pricing_plain( array $o, $currency = '' ) {
-		$qty_mode    = self::get_effective_qty_mode( $o );
+		$o           = self::normalize_payload_same_eyes( $o );
 		$left_price  = isset( $o['left']['unit_price'] ) ? (float) wc_format_decimal( $o['left']['unit_price'] ) : 0.0;
 		$right_price = isset( $o['right']['unit_price'] ) ? (float) wc_format_decimal( $o['right']['unit_price'] ) : 0.0;
 
+		if ( self::payload_uses_single_eye_display( $o ) ) {
+			$qty = self::get_combined_line_quantity( $o );
+			return __( 'Both eyes', 'wc-optic' ) . ': ' . self::format_plain_price( $left_price, $currency ) . ' x ' . $qty;
+		}
+
+		$qty_mode = self::get_effective_qty_mode( $o );
 		if ( 'dual' !== $qty_mode ) {
-			$qty = isset( $o['qty_single'] ) ? max( 1, (int) $o['qty_single'] ) : ( isset( $o['line_qty'] ) ? max( 1, (int) $o['line_qty'] ) : 1 );
-			return 'Same: ' . self::format_plain_price( $left_price, $currency ) . ' x ' . $qty;
+			$qty = self::get_combined_line_quantity( $o );
+			return __( 'Both eyes', 'wc-optic' ) . ': ' . self::format_plain_price( $left_price, $currency ) . ' x ' . $qty;
 		}
 
 		$qty_right = isset( $o['qty_right'] ) ? max( 1, (int) $o['qty_right'] ) : 1;
@@ -1177,7 +1399,8 @@ class WC_Optic_Cart {
 		$payload['right']      = $left;
 
 		if ( $qty_left > 0 && $qty_right > 0 ) {
-			$payload['qty_single'] = $qty_left + $qty_right;
+			// Same power: mirrored per-eye qty fields mean one shared line qty, not a sum.
+			$payload['qty_single'] = ( $qty_left === $qty_right ) ? $qty_left : ( $qty_left + $qty_right );
 			$payload['line_qty']   = $payload['qty_single'];
 		} elseif ( $was_dual && (int) ( $payload['line_qty'] ?? 0 ) > 0 ) {
 			$payload['qty_single'] = max( 1, (int) $payload['line_qty'] );

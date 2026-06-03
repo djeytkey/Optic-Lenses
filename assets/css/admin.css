@@ -229,6 +229,60 @@
 	background: #f6f7f7;
 }
 
+#optic_product_data_panel .wc-optic-child-qr-wrap .wc-optic-child-qr {
+	min-height: 1px;
+}
+
+#optic_product_data_panel .wc-optic-child-qr .wc-optic-qr,
+.wc-optic-qr-list--product .wc-optic-qr {
+	display: inline-flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	margin-top: 8px;
+	padding: 10px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	background: #fff;
+}
+
+#optic_product_data_panel .wc-optic-child-qr .wc-optic-qr__label,
+.wc-optic-qr-list .wc-optic-qr__label {
+	font-size: 11px;
+	font-weight: 700;
+	color: #50575e;
+	text-transform: uppercase;
+}
+
+.wc-optic-qr {
+	--wc-optic-qr-size: 120px;
+}
+
+#optic_product_data_panel .wc-optic-child-qr .wc-optic-qr__img,
+.wc-optic-qr-list .wc-optic-qr__img,
+#optic_product_data_panel .wc-optic-child-qr .wc-optic-qr__svg svg,
+.wc-optic-qr-list .wc-optic-qr__svg svg {
+	display: block;
+	width: var(--wc-optic-qr-size);
+	height: var(--wc-optic-qr-size);
+}
+
+#optic_product_data_panel .wc-optic-child-qr .wc-optic-qr__sku,
+.wc-optic-qr-list .wc-optic-qr__sku {
+	font-size: 11px;
+	line-height: 1.35;
+	word-break: break-all;
+	text-align: center;
+	max-width: 140px;
+}
+
+.wc-optic-qr-list--product {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin-top: 12px;
+}
+
 #optic_product_data_panel .wc-optic-child-actions {
 	margin-top: 0.5em;
 }
