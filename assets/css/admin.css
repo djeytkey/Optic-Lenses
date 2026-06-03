@@ -49,17 +49,29 @@
 	white-space: nowrap;
 }
 
-.wc-optic-divisions-table .wc-optic-remove-division {
+.wc-optic-divisions-table .wc-optic-hide-division {
 	vertical-align: middle;
 	line-height: 1;
 	padding: 2px 4px;
 }
 
-.wc-optic-divisions-table .wc-optic-remove-division .dashicons {
+.wc-optic-divisions-table .wc-optic-hide-division .dashicons {
 	font-size: 18px;
 	width: 18px;
 	height: 18px;
 	vertical-align: middle;
+}
+
+.wc-optic-divisions-hidden-heading td {
+	background: #f6f7f7;
+}
+
+#wc-optic-divisions-hidden-separator.wc-optic-is-empty .wc-optic-divisions-hidden-heading {
+	display: none;
+}
+
+.wc-optic-division-row--hidden .wc-optic-division-label {
+	color: #646970;
 }
 
 .wc-optic-divisions-toolbar {

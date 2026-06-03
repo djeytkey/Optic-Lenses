@@ -316,3 +316,7 @@ li.wc-optic-child-choice__power-item {
     list-style: none;
     font-weight: 400;
 }
+
+.wc-optic-toggle.wc-optic-toggle--question input {
+    margin-bottom: 0;
+}

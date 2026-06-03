@@ -98,6 +98,15 @@ class WC_Optic_Plugin {
 	}
 
 	/**
+	 * Visible divisions for product selectors (excludes hidden).
+	 *
+	 * @return array<string, array{label:string, powers:string[], hidden:bool}>
+	 */
+	public static function get_visible_divisions() {
+		return WC_Optic_Divisions::get_visible();
+	}
+
+	/**
 	 * Powers for division slug.
 	 *
 	 * @param string $division Division slug.

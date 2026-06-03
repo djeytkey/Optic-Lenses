@@ -60,7 +60,7 @@ class WC_Optic_Admin_Product {
 			array(
 				'id'                => '_optic_division',
 				'label'             => __( 'Optical division', 'wc-optic' ),
-				'options'           => self::division_options(),
+				'options'           => self::division_options( (string) $product->get_meta( '_optic_division', true ) ),
 				'value'             => $product->get_meta( '_optic_division', true ),
 				'class'             => 'wc-enhanced-select wc-optic-select2',
 				'wrapper_class'     => 'form-field-wide',
@@ -142,13 +142,27 @@ class WC_Optic_Admin_Product {
 	/**
 	 * Division <select> options.
 	 *
+	 * @param string $current_division Currently selected division slug.
 	 * @return array
 	 */
-	protected static function division_options() {
+	protected static function division_options( $current_division = '' ) {
 		$out = array( '' => __( '— Select —', 'wc-optic' ) );
-		foreach ( WC_Optic_Plugin::get_divisions() as $slug => $def ) {
+		foreach ( WC_Optic_Plugin::get_visible_divisions() as $slug => $def ) {
 			$out[ $slug ] = $def['label'];
 		}
+
+		$current_division = sanitize_key( (string) $current_division );
+		if ( $current_division && ! isset( $out[ $current_division ] ) ) {
+			$all = WC_Optic_Plugin::get_divisions();
+			if ( isset( $all[ $current_division ] ) ) {
+				$out[ $current_division ] = sprintf(
+					/* translators: %s: division label */
+					__( '%s (hidden)', 'wc-optic' ),
+					$all[ $current_division ]['label']
+				);
+			}
+		}
+
 		return $out;
 	}
 

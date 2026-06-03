@@ -43,13 +43,81 @@
 			'<tr class="wc-optic-division-row wc-optic-new-division-row">' +
 			'<td><input type="text" name="' +
 			pf +
-			'[label]" value="" class="regular-text wc-optic-division-label" autocomplete="off" /></td>' +
+			'[label]" value="" class="regular-text wc-optic-division-label" autocomplete="off" />' +
+			'<input type="hidden" class="wc-optic-division-hidden-flag" name="' +
+			pf +
+			'[hidden]" value="0" /></td>' +
 			'<td class="wc-optic-division-powers">' +
 			powersHtml +
 			'</td>' +
-			'<td></td>' +
+			'<td class="wc-optic-division-actions"></td>' +
 			'</tr>';
 		return $( html );
+	}
+
+	/**
+	 * Show or hide the hidden-divisions section heading.
+	 */
+	function updateHiddenDivisionsSection() {
+		var $hidden = $( '#wc-optic-divisions-hidden' );
+		var $separator = $( '#wc-optic-divisions-hidden-separator' );
+		if ( ! $hidden.length || ! $separator.length ) {
+			return;
+		}
+		var hasHidden = $hidden.find( 'tr.wc-optic-division-row' ).length > 0;
+		$separator.toggleClass( 'wc-optic-is-empty', ! hasHidden );
+	}
+
+	/**
+	 * Build hide action button markup.
+	 *
+	 * @param {string} label Division label for aria-label.
+	 * @return {string}
+	 */
+	function buildHideDivisionButton( label ) {
+		var aria = wcOpticAdmin.i18n.hideDivisionLabel || 'Hide division';
+		if ( label ) {
+			aria += ' ' + label;
+		}
+		return (
+			'<button type="button" class="button-link-delete wc-optic-hide-division" aria-label="' +
+			aria +
+			'">' +
+			'<span class="dashicons dashicons-hidden" aria-hidden="true"></span>' +
+			'</button>'
+		);
+	}
+
+	/**
+	 * Toggle one division row between visible and hidden state.
+	 *
+	 * @param {jQuery} $tr     Table row.
+	 * @param {boolean} hidden Hidden state.
+	 */
+	function setDivisionRowHidden( $tr, hidden ) {
+		var $visible = $( '#wc-optic-divisions-visible' );
+		var $hiddenBody = $( '#wc-optic-divisions-hidden' );
+		var $actions = $tr.find( '.wc-optic-division-actions' );
+		var label = $.trim( $tr.find( '.wc-optic-division-label' ).first().val() || '' );
+
+		$tr.find( '.wc-optic-division-hidden-flag' ).val( hidden ? '1' : '0' );
+		$tr.toggleClass( 'wc-optic-division-row--hidden', hidden );
+
+		if ( hidden ) {
+			$actions.html(
+				'<button type="button" class="button wc-optic-restore-division">' +
+					( wcOpticAdmin.i18n.restoreDivision || 'Restore' ) +
+					'</button>'
+			);
+			$hiddenBody.append( $tr );
+		} else {
+			$actions.html( buildHideDivisionButton( label ) );
+			if ( $visible.length ) {
+				$visible.find( 'tr.wc-optic-new-division-row' ).first().before( $tr );
+			}
+		}
+
+		updateHiddenDivisionsSection();
 	}
 
 	/**
@@ -153,31 +221,35 @@
 		} );
 
 		$( '#wc-optic-add-division' ).on( 'click', function () {
-			var $tbody = $( 'table.wc-optic-divisions-table tbody' );
+			var $tbody = $( '#wc-optic-divisions-visible' );
 			if ( ! $tbody.length ) {
 				return;
 			}
 			var $tr = buildEmptyDivisionRow();
-			$tbody.append( $tr );
+			$tbody.find( 'tr.wc-optic-new-division-row' ).first().before( $tr );
 			$tr.find( '.wc-optic-division-label' ).first().trigger( 'focus' );
 		} );
 
-		$( document ).on( 'click', '.wc-optic-remove-division', function ( e ) {
+		$( document ).on( 'click', '.wc-optic-hide-division', function ( e ) {
 			e.preventDefault();
-			var $btn = $( this );
-			var $tr = $btn.closest( 'tr' );
+			var $tr = $( this ).closest( 'tr' );
 			var name = $.trim( $tr.find( '.wc-optic-division-label' ).first().val() || '' );
-			var msg = wcOpticAdmin.i18n.confirmDivisionDelete;
+			var msg = wcOpticAdmin.i18n.confirmDivisionHide;
 			if ( name ) {
 				msg += '\n\n' + name;
 			}
 			if ( ! window.confirm( msg ) ) {
 				return;
 			}
-			$tr.fadeOut( 200, function () {
-				$( this ).remove();
-			} );
+			setDivisionRowHidden( $tr, true );
 		} );
+
+		$( document ).on( 'click', '.wc-optic-restore-division', function ( e ) {
+			e.preventDefault();
+			setDivisionRowHidden( $( this ).closest( 'tr' ), false );
+		} );
+
+		updateHiddenDivisionsSection();
 
 		$( document ).on( 'click', '.wc-optic-delete-row', function ( e ) {
 			e.preventDefault();

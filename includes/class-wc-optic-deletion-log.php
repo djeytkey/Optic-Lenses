@@ -129,6 +129,48 @@ class WC_Optic_Deletion_Log {
 	}
 
 	/**
+	 * Persist division deletion audit row.
+	 *
+	 * @param string $division_slug       Division slug.
+	 * @param string $division_label      Division label at deletion time.
+	 * @param int    $deleted_by_user_id  User id.
+	 * @param array  $affected_products   Output of find_products_using_division().
+	 * @return int Insert id or 0 on failure.
+	 */
+	public static function record_division( $division_slug, $division_label, $deleted_by_user_id, array $affected_products ) {
+		global $wpdb;
+
+		$snapshot = array();
+		foreach ( $affected_products as $p ) {
+			$snapshot[] = array(
+				'id'   => isset( $p['id'] ) ? (int) $p['id'] : 0,
+				'name' => isset( $p['name'] ) ? (string) $p['name'] : '',
+			);
+		}
+
+		$table = WC_Optic_Database::table_deletion_log();
+		$res   = $wpdb->insert(
+			$table,
+			array(
+				'catalog_term_id'   => 0,
+				'term_type'         => 'division_hidden',
+				'term_name'         => (string) $division_label,
+				'term_slug'         => sanitize_key( (string) $division_slug ),
+				'deleted_by'        => (int) $deleted_by_user_id,
+				'deleted_at'        => current_time( 'mysql' ),
+				'affected_products' => wp_json_encode( $snapshot, JSON_UNESCAPED_UNICODE ),
+			),
+			array( '%d', '%s', '%s', '%s', '%d', '%s', '%s' )
+		);
+
+		if ( ! $res ) {
+			return 0;
+		}
+
+		return (int) $wpdb->insert_id;
+	}
+
+	/**
 	 * Recent deletion log rows (newest first).
 	 *
 	 * @param int $limit Max rows.
