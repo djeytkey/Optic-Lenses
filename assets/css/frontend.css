@@ -217,7 +217,35 @@ select.wc-optic-power-dropdown option.wc-optic-option--rupture,
 	gap: 0.5rem;
 }
 
+.wc-optic-config-table__values {
+	min-width: 0;
+}
+
+.wc-optic-qty--single {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 1.5rem;
+	align-items: start;
+}
+
 .wc-optic-qty--single input,
+.wc-optic-qty--dual input {
+	box-sizing: border-box;
+}
+
+.wc-optic-qty--single input {
+	grid-column: 1;
+	width: 100%;
+	max-width: none;
+}
+
+/* Flatsome / WooCommerce themes often force .qty to full form width. */
+.wc-optic-cart-form .wc-optic-qty--single input.qty,
+.wc-optic-cart-form .wc-optic-qty--single input.input-text {
+	width: 100%;
+	max-width: none;
+}
+
 .wc-optic-qty--dual input {
 	max-width: 120px;
 }
@@ -297,9 +325,15 @@ select.wc-optic-power-dropdown option.wc-optic-option--rupture,
 	}
 
 	.wc-optic-eyes--stack,
+	.wc-optic-qty--single,
 	.wc-optic-qty--dual {
 		grid-template-columns: 1fr;
 		gap: 1rem;
+	}
+
+	.wc-optic-qty--single input {
+		grid-column: auto;
+		max-width: 120px;
 	}
 
 	.wc-optic-eye-title,
