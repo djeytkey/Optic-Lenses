@@ -128,6 +128,10 @@ class WC_Optic_Frontend {
 					'outOfStockOption' => __( 'Out of stock', 'wc-optic' ),
 					'rupture'        => __( 'Rupture', 'wc-optic' ),
 					'comboUnavailable' => __( 'This combination is not available.', 'wc-optic' ),
+					'noPower'          => __( 'No power', 'wc-optic' ),
+					'power'            => __( 'Power', 'wc-optic' ),
+					'powerType'        => __( 'Power type', 'wc-optic' ),
+					'noPowerUnavailable' => __( 'This product is not available without power.', 'wc-optic' ),
 				),
 			)
 		);
@@ -151,7 +155,7 @@ class WC_Optic_Frontend {
 	 */
 	public static function has_child_options( WC_Product $product ) {
 		$matrix = WC_Optic_SKU::get_storefront_matrix( $product );
-		return ! empty( $matrix['children'] );
+		return ! empty( $matrix['children'] ) || ! empty( $matrix['noPowerChild'] );
 	}
 
 	/**

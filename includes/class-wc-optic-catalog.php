@@ -231,6 +231,63 @@ class WC_Optic_Catalog {
 	}
 
 	/**
+	 * Whether an SPH catalog row represents plano / zero power (+0.00).
+	 *
+	 * @param object|null $row SPH catalog row.
+	 * @return bool
+	 */
+	public static function sph_term_is_zero_power( $row ) {
+		if ( ! $row ) {
+			return false;
+		}
+
+		$candidates = array(
+			isset( $row->name ) ? (string) $row->name : '',
+			isset( $row->slug ) ? (string) $row->slug : '',
+			isset( $row->sku_fragment ) ? (string) $row->sku_fragment : '',
+		);
+
+		foreach ( $candidates as $value ) {
+			if ( self::sph_value_is_zero_power( $value ) ) {
+				return true;
+			}
+		}
+
+		/**
+		 * Filter whether an SPH catalog row is treated as zero power (+0.00).
+		 *
+		 * @param bool   $is_zero Whether the row is zero power.
+		 * @param object $row     SPH catalog row.
+		 */
+		return (bool) apply_filters( 'wc_optic_sph_is_zero_power', false, $row );
+	}
+
+	/**
+	 * Whether a display/slug/SKU fragment value represents plano (+0.00).
+	 *
+	 * @param string $value Raw value.
+	 * @return bool
+	 */
+	public static function sph_value_is_zero_power( $value ) {
+		$value = strtolower( trim( (string) $value ) );
+		if ( '' === $value ) {
+			return false;
+		}
+
+		if ( in_array( $value, array( 'plano', 'plan', 'zero', '0', '+0' ), true ) ) {
+			return true;
+		}
+
+		$normalized = preg_replace( '/^\+/u', '', $value );
+		$normalized = str_replace( ',', '.', $normalized );
+		if ( is_numeric( $normalized ) && abs( (float) $normalized ) < 0.0001 ) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
 	 * SKU fragment as entered (keeps +, -, etc.; used in product SKU).
 	 *
 	 * @param string $raw Raw fragment.

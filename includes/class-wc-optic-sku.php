@@ -392,6 +392,7 @@ class WC_Optic_SKU {
 		$powers   = $division ? WC_Optic_Plugin::get_powers_for_division( $division ) : array();
 		$children = array();
 		$term_ids = array();
+		$no_power_child = null;
 
 		foreach ( $powers as $power ) {
 			$term_ids[ $power ] = array();
@@ -399,6 +400,22 @@ class WC_Optic_SKU {
 
 		foreach ( self::get_enabled_child_configs( $product ) as $config ) {
 			if ( ! self::child_is_complete( $config, $division ) ) {
+				continue;
+			}
+
+			$remaining = WC_Optic_Cart::get_remaining_child_stock( $product, $config );
+			$in_stock  = null === $remaining || $remaining > 0;
+			$child_row = array(
+				'id'      => (string) ( $config['id'] ?? '' ),
+				'price'   => self::get_child_unit_price( $config ),
+				'stock'   => $remaining,
+				'inStock' => $in_stock,
+			);
+
+			if ( self::child_is_no_power( $config, $division ) ) {
+				if ( null === $no_power_child ) {
+					$no_power_child = $child_row;
+				}
 				continue;
 			}
 
@@ -410,17 +427,8 @@ class WC_Optic_SKU {
 					$term_ids[ $power ][ $tid ] = true;
 				}
 			}
-
-			$remaining = WC_Optic_Cart::get_remaining_child_stock( $product, $config );
-			$in_stock  = null === $remaining || $remaining > 0;
-
-			$children[] = array(
-				'id'      => (string) ( $config['id'] ?? '' ),
-				'powers'  => $power_map,
-				'price'   => self::get_child_unit_price( $config ),
-				'stock'   => $remaining,
-				'inStock' => $in_stock,
-			);
+			$child_row['powers'] = $power_map;
+			$children[]          = $child_row;
 		}
 
 		$terms  = array();
@@ -440,10 +448,99 @@ class WC_Optic_SKU {
 		}
 
 		return array(
-			'powers'   => $powers,
-			'children' => $children,
-			'terms'    => $terms,
-			'labels'   => $labels,
+			'division'            => $division,
+			'supportsNoPowerMode' => self::division_supports_no_power_mode( $division ),
+			'noPowerChild'        => $no_power_child,
+			'powers'              => $powers,
+			'children'            => $children,
+			'terms'               => $terms,
+			'labels'              => $labels,
+		);
+	}
+
+	/**
+	 * Whether a division supports the no-power / power storefront toggle.
+	 *
+	 * @param string $division Division slug.
+	 * @return bool
+	 */
+	public static function division_supports_no_power_mode( $division ) {
+		return 'color_lenses' === sanitize_key( (string) $division );
+	}
+
+	/**
+	 * Whether an internal product is a no-power variant (color lenses with SPH +0.00).
+	 *
+	 * @param array  $config   Child config.
+	 * @param string $division Parent division.
+	 * @return bool
+	 */
+	public static function child_is_no_power( array $config, $division ) {
+		if ( ! self::division_supports_no_power_mode( $division ) ) {
+			return false;
+		}
+
+		$sph_id = isset( $config['powers']['sph'] ) ? (int) $config['powers']['sph'] : 0;
+		if ( $sph_id < 1 ) {
+			return false;
+		}
+
+		return WC_Optic_Catalog::sph_term_is_zero_power( WC_Optic_Catalog::get_valid_term( $sph_id, 'sph' ) );
+	}
+
+	/**
+	 * Find the enabled no-power child for a color lenses product.
+	 *
+	 * @param WC_Product $product Product.
+	 * @return array<string, mixed>|null
+	 */
+	public static function find_no_power_child( WC_Product $product ) {
+		$division = (string) $product->get_meta( '_optic_division', true );
+		if ( ! self::division_supports_no_power_mode( $division ) ) {
+			return null;
+		}
+
+		foreach ( self::get_enabled_child_configs( $product ) as $config ) {
+			if ( self::child_is_no_power( $config, $division ) && self::child_is_complete( $config, $division ) ) {
+				return $config;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Build one eye payload from a resolved child config.
+	 *
+	 * @param array  $config   Child config.
+	 * @param string $division Product division.
+	 * @return array|WP_Error
+	 */
+	public static function build_eye_payload_from_child( array $config, $division ) {
+		$powers = array();
+		foreach ( WC_Optic_Plugin::get_powers_for_division( $division ) as $power ) {
+			if ( self::child_is_no_power( $config, $division ) ) {
+				continue;
+			}
+			$id  = isset( $config['powers'][ $power ] ) ? (int) $config['powers'][ $power ] : 0;
+			$row = $id ? WC_Optic_Catalog::get_valid_term( $id, $power ) : null;
+			if ( ! $row ) {
+				return new WP_Error( 'wc_optic', __( 'Selected internal product is incomplete.', 'wc-optic' ) );
+			}
+			$powers[ $power ] = array(
+				'id'    => $id,
+				'label' => WC_Optic_Catalog::get_display_name( $row ),
+			);
+		}
+
+		return array(
+			'child_id'   => (string) $config['id'],
+			'label'      => (string) $config['label'],
+			'display'    => self::child_display_label( $config, $division ),
+			'sku'        => (string) $config['sku'],
+			'unit_price' => self::get_child_unit_price( $config ),
+			'stock_qty'  => self::get_child_stock_qty( $config ),
+			'powers'     => $powers,
 		);
 	}
 

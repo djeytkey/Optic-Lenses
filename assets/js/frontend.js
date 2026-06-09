@@ -16,8 +16,29 @@
 	}
 
 	function isDifferentPowerMode() {
+		if ( isNoPowerMode() ) {
+			return false;
+		}
 		var $cb = $( '#wc_optic_different_power' );
 		return $cb.length > 0 && $cb.is( ':checked' );
+	}
+
+	function supportsNoPowerMode() {
+		var matrix = getMatrix();
+		return matrix.supportsNoPowerMode === true;
+	}
+
+	function isNoPowerMode() {
+		if ( ! supportsNoPowerMode() ) {
+			return false;
+		}
+		var $checked = $( 'input[name="wc_optic_power_mode"]:checked' );
+		return $checked.length > 0 && $checked.val() === 'no_power';
+	}
+
+	function getNoPowerChild() {
+		var matrix = getMatrix();
+		return matrix.noPowerChild || null;
 	}
 
 	function formatPrice( amount ) {
@@ -161,12 +182,18 @@
 	}
 
 	function isSelectionComplete( eye ) {
+		if ( isNoPowerMode() ) {
+			return !! getNoPowerChild();
+		}
 		var matrix = getMatrix();
 		var powers = matrix.powers || [];
 		return Object.keys( getPartialSelection( eye ) ).length === powers.length;
 	}
 
 	function resolveChildForEye( eye ) {
+		if ( isNoPowerMode() ) {
+			return getNoPowerChild();
+		}
 		if ( ! isSelectionComplete( eye ) ) {
 			return null;
 		}
@@ -313,6 +340,10 @@
 	}
 
 	function hasValidPurchasableSelection() {
+		if ( isNoPowerMode() ) {
+			var noPowerChild = getNoPowerChild();
+			return !!( noPowerChild && childHasStock( noPowerChild ) );
+		}
 		var different = isDifferentPowerMode();
 		var samePowers = eyesHaveSameSelection();
 		var left = resolveChildForEye( 'left' );
@@ -324,6 +355,63 @@
 			return !!( right && childHasStock( right ) );
 		}
 		return true;
+	}
+
+	function syncNoPowerChildFields() {
+		var child = getNoPowerChild();
+		$( '.wc-optic-eye' ).each( function () {
+			var $eye = $( this );
+			var $hidden = $eye.find( '.wc-optic-resolved-child' );
+			var $notice = $eye.find( '.wc-optic-resolution-notice' );
+			if ( ! child ) {
+				$hidden.val( '' );
+				$notice.prop( 'hidden', false );
+				$notice.text( getI18n( 'noPowerUnavailable', 'This product is not available without power.' ) );
+				return;
+			}
+			$hidden.val( child.id );
+			if ( ! childHasStock( child ) ) {
+				$notice.prop( 'hidden', false );
+				$notice.text( getI18n( 'rupture', 'Rupture' ) );
+			} else {
+				$notice.prop( 'hidden', true );
+				$notice.text( '' );
+			}
+		} );
+	}
+
+	function togglePowerMode() {
+		var noPower = isNoPowerMode();
+		var $prescription = $( '.wc-optic-prescription-row' );
+		var $differentToggle = $( '.wc-optic-toggle--question' );
+		var $right = $( '.wc-optic-eye--right' );
+		var $singleQty = $( '.wc-optic-qty--single' );
+		var $dualQty = $( '.wc-optic-qty--dual' );
+
+		if ( noPower ) {
+			$prescription.prop( 'hidden', true );
+			$differentToggle.prop( 'hidden', true );
+			$( '#wc_optic_different_power' ).prop( 'checked', false );
+			$right.prop( 'hidden', true );
+			$singleQty.prop( 'hidden', false );
+			$dualQty.prop( 'hidden', true );
+			$( 'select.wc-optic-power-dropdown' ).prop( 'required', false );
+			syncNoPowerChildFields();
+		} else {
+			$prescription.prop( 'hidden', false );
+			if ( $differentToggle.length && ( getMatrix().children || [] ).length > 1 ) {
+				$differentToggle.prop( 'hidden', false );
+			}
+			$( '.wc-optic-eye--left select.wc-optic-power-dropdown' ).prop( 'required', true );
+			initEyeCascade( 'left' );
+			initPowerDropdowns( $( '.wc-optic-prescription-row' ) );
+			toggleSamePower();
+		}
+
+		syncQuantityStockLimits();
+		syncLineQuantity();
+		updateAddToCartState();
+		updatePriceDisplay();
 	}
 
 	function syncSummaryProductPrice() {
@@ -532,13 +620,18 @@
 		}
 
 		initPowerDropdowns( $form );
-		initEyeCascade( 'left' );
-		toggleSamePower();
+		if ( supportsNoPowerMode() ) {
+			togglePowerMode();
+		} else {
+			initEyeCascade( 'left' );
+			toggleSamePower();
+		}
 		syncQuantityStockLimits();
 		syncLineQuantity();
 		updatePriceDisplay();
 		updateAddToCartState();
 
+		$( 'input[name="wc_optic_power_mode"]' ).on( 'change', togglePowerMode );
 		$( '#wc_optic_different_power' ).on( 'change', toggleSamePower );
 		$( '#wc_optic_qty, #wc_optic_qty_left, #wc_optic_qty_right' ).on( 'change input', syncLineQuantity );
 
@@ -549,7 +642,9 @@
 		} );
 
 		$form.on( 'submit', function ( e ) {
-			if ( ! isDifferentPowerMode() ) {
+			if ( isNoPowerMode() ) {
+				syncNoPowerChildFields();
+			} else if ( ! isDifferentPowerMode() ) {
 				syncRightPowersFromLeft();
 			}
 			syncLineQuantity();

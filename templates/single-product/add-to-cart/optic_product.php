@@ -18,7 +18,8 @@ if ( ! $division ) {
 
 $divisions         = WC_Optic_Plugin::get_divisions();
 $div_label         = isset( $divisions[ $division ] ) ? $divisions[ $division ]['label'] : $division;
-$storefront_matrix = WC_Optic_SKU::get_storefront_matrix( $product );
+$storefront_matrix    = WC_Optic_SKU::get_storefront_matrix( $product );
+$supports_no_power    = WC_Optic_SKU::division_supports_no_power_mode( $division );
 $can_choose_different = count( $storefront_matrix['children'] ?? array() ) > 1;
 
 if ( ! WC_Optic_Frontend::has_child_options( $product ) ) {
@@ -61,8 +62,29 @@ do_action( 'woocommerce_before_add_to_cart_form' );
 	<?php endif; ?>
 
 	<div class="wc-optic-config-card">
+		<?php if ( $supports_no_power ) : ?>
+			<div class="wc-optic-config-table__row wc-optic-power-mode-row">
+				<div class="wc-optic-config-table__label">
+					<strong><?php esc_html_e( 'Power type', 'wc-optic' ); ?></strong>
+				</div>
+				<div class="wc-optic-config-table__values">
+					<fieldset class="wc-optic-fieldset wc-optic-power-mode">
+						<legend class="screen-reader-text"><?php esc_html_e( 'Power type', 'wc-optic' ); ?></legend>
+						<label class="wc-optic-power-mode__option">
+							<input type="radio" name="wc_optic_power_mode" value="no_power" checked="checked" />
+							<?php esc_html_e( 'No power', 'wc-optic' ); ?>
+						</label>
+						<label class="wc-optic-power-mode__option">
+							<input type="radio" name="wc_optic_power_mode" value="power" />
+							<?php esc_html_e( 'Power', 'wc-optic' ); ?>
+						</label>
+					</fieldset>
+				</div>
+			</div>
+		<?php endif; ?>
+
 		<?php if ( $can_choose_different ) : ?>
-			<p class="wc-optic-toggle wc-optic-toggle--question">
+			<p class="wc-optic-toggle wc-optic-toggle--question" <?php echo $supports_no_power ? 'hidden' : ''; ?>>
 				<label for="wc_optic_different_power">
 					<input type="checkbox" name="wc_optic_different_power" value="1" id="wc_optic_different_power" />
 					<strong><?php esc_html_e( 'Need 2 Different Powers?', 'wc-optic' ); ?></strong>
@@ -71,7 +93,7 @@ do_action( 'woocommerce_before_add_to_cart_form' );
 		<?php endif; ?>
 
 		<div class="wc-optic-config-table">
-			<div class="wc-optic-config-table__row">
+			<div class="wc-optic-config-table__row wc-optic-prescription-row" <?php echo $supports_no_power ? 'hidden' : ''; ?>>
 				<div class="wc-optic-config-table__label">
 					<strong><?php esc_html_e( 'Prescription', 'wc-optic' ); ?></strong>
 				</div>

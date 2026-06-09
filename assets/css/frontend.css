@@ -78,6 +78,27 @@ html[dir="rtl"] .wc-optic-eyes--stack {
 	min-width: 3.5rem;
 }
 
+.wc-optic-power-mode {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1rem;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.wc-optic-power-mode__option {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	cursor: pointer;
+	font-weight: 500;
+}
+
+.wc-optic-power-mode__option input {
+	margin: 0;
+}
+
 .wc-optic-power-selectors {
 	display: grid;
 	gap: 0.65rem;
