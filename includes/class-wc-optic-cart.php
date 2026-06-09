@@ -1088,16 +1088,22 @@ class WC_Optic_Cart {
 		$right_max_attr  = null === $right_max ? '' : ' max="' . esc_attr( (string) $right_max ) . '"';
 
 		ob_start();
-		echo '<div class="wc-optic-cart-qty" data-cart-key="' . esc_attr( $cart_item_key ) . '" data-qty-mode="' . esc_attr( $qty_mode ) . '">';
+		echo '<div class="wc-optic-cart-qty wc-optic-cart-qty--' . esc_attr( $qty_mode ) . '" data-cart-key="' . esc_attr( $cart_item_key ) . '" data-qty-mode="' . esc_attr( $qty_mode ) . '">';
 		echo '<input type="hidden" name="cart[' . esc_attr( $cart_item_key ) . '][qty]" value="' . esc_attr( (string) $total ) . '" class="wc-optic-cart-line-total" />';
 		if ( 'dual' === $qty_mode ) {
-			echo '<span class="wc-optic-ltr" dir="ltr"><label>' . esc_html__( 'OS', 'wc-optic' ) . '</label> ';
-			echo '<input type="number" min="1"' . $left_max_attr . ' name="wc_optic_cart[' . esc_attr( $cart_item_key ) . '][left]" class="wc-optic-cart-q-left input-text qty text" value="' . esc_attr( (string) $ql ) . '" /></span> ';
-			echo '<span class="wc-optic-ltr" dir="ltr"><label>' . esc_html__( 'OD', 'wc-optic' ) . '</label> ';
-			echo '<input type="number" min="1"' . $right_max_attr . ' name="wc_optic_cart[' . esc_attr( $cart_item_key ) . '][right]" class="wc-optic-cart-q-right input-text qty text" value="' . esc_attr( (string) $qr ) . '" /></span>';
+			echo '<div class="wc-optic-cart-qty__field wc-optic-ltr" dir="ltr">';
+			echo '<span class="wc-optic-cart-qty__label">' . esc_html__( 'OS', 'wc-optic' ) . '</span>';
+			echo '<input type="number" min="1"' . $left_max_attr . ' name="wc_optic_cart[' . esc_attr( $cart_item_key ) . '][left]" class="wc-optic-cart-q-left input-text qty text" value="' . esc_attr( (string) $ql ) . '" />';
+			echo '</div>';
+			echo '<div class="wc-optic-cart-qty__field wc-optic-ltr" dir="ltr">';
+			echo '<span class="wc-optic-cart-qty__label">' . esc_html__( 'OD', 'wc-optic' ) . '</span>';
+			echo '<input type="number" min="1"' . $right_max_attr . ' name="wc_optic_cart[' . esc_attr( $cart_item_key ) . '][right]" class="wc-optic-cart-q-right input-text qty text" value="' . esc_attr( (string) $qr ) . '" />';
+			echo '</div>';
 		} else {
-			echo '<span class="wc-optic-ltr" dir="ltr"><label>' . esc_html__( 'Both', 'wc-optic' ) . '</label> ';
-			echo '<input type="number" min="1"' . $single_max_attr . ' name="wc_optic_cart[' . esc_attr( $cart_item_key ) . '][single]" class="wc-optic-cart-q-single input-text qty text" value="' . esc_attr( (string) $qs ) . '" /></span>';
+			echo '<div class="wc-optic-cart-qty__field wc-optic-ltr" dir="ltr">';
+			echo '<span class="wc-optic-cart-qty__label">' . esc_html__( 'Qty', 'wc-optic' ) . '</span>';
+			echo '<input type="number" min="1"' . $single_max_attr . ' name="wc_optic_cart[' . esc_attr( $cart_item_key ) . '][single]" class="wc-optic-cart-q-single input-text qty text" value="' . esc_attr( (string) $qs ) . '" />';
+			echo '</div>';
 		}
 		echo '</div>';
 		return ob_get_clean();
@@ -1599,6 +1605,11 @@ class WC_Optic_Cart {
 		if ( ! is_cart() && ! is_checkout() ) {
 			return;
 		}
+
+		if ( class_exists( 'WC_Optic_Flatsome' ) && WC_Optic_Flatsome::is_active() ) {
+			return;
+		}
+
 		wp_enqueue_style(
 			'wc-optic-frontend',
 			WC_OPTIC_PLUGIN_URL . 'assets/css/frontend.css',

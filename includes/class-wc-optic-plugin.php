@@ -56,6 +56,7 @@ class WC_Optic_Plugin {
 		WC_Optic_Admin_Import::hooks();
 		WC_Optic_Ajax::hooks();
 		WC_Optic_Frontend::hooks();
+		WC_Optic_Flatsome::hooks();
 		WC_Optic_Cart::hooks();
 		WC_Optic_Pricing::hooks();
 

@@ -526,17 +526,25 @@ html[dir="rtl"] .wc-optic-child-choice__power-item,
 	gap: 0.5rem;
 }
 
-.wc-optic-cart-qty > span {
+.wc-optic-cart-qty > span,
+.wc-optic-cart-qty__field {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
 	gap: 0.25rem;
 }
 
-.wc-optic-cart-qty label {
+.wc-optic-cart-qty label,
+.wc-optic-cart-qty__label {
 	display: block;
 	margin: 0;
 	font-weight: 600;
+}
+
+.wc-optic-cart-qty__label {
+	font-size: 0.72rem;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
 }
 
 .wc-optic-cart-qty input[type="number"] {
