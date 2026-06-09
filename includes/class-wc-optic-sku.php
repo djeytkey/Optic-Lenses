@@ -510,6 +510,48 @@ class WC_Optic_SKU {
 	}
 
 	/**
+	 * Internal child used for storefront default price display (option B).
+	 *
+	 * Color lenses: no-power (+0.00) child. Other divisions: first enabled complete child.
+	 *
+	 * @param WC_Product $product Product.
+	 * @return array<string, mixed>|null
+	 */
+	public static function get_default_display_child( WC_Product $product ) {
+		$division = (string) $product->get_meta( '_optic_division', true );
+
+		if ( self::division_supports_no_power_mode( $division ) ) {
+			$no_power = self::find_no_power_child( $product );
+			if ( $no_power ) {
+				return $no_power;
+			}
+		}
+
+		foreach ( self::get_enabled_child_configs( $product ) as $config ) {
+			if ( self::child_is_complete( $config, $division ) ) {
+				return $config;
+			}
+		}
+
+		return null;
+	}
+
+	/**
+	 * Default storefront unit price for an optic product.
+	 *
+	 * @param WC_Product $product Product.
+	 * @return float
+	 */
+	public static function get_default_display_price( WC_Product $product ) {
+		$config = self::get_default_display_child( $product );
+		if ( ! $config ) {
+			return 0.0;
+		}
+
+		return self::get_child_unit_price( $config );
+	}
+
+	/**
 	 * Build one eye payload from a resolved child config.
 	 *
 	 * @param array  $config   Child config.
@@ -961,24 +1003,11 @@ class WC_Optic_SKU {
 			$product->update_meta_data( $meta_key, $index[ $type ] ?? array() );
 		}
 
-		$min_price = 0.0;
-		foreach ( $child_configs as $config ) {
-			if ( ! self::child_is_enabled( $config ) ) {
-				continue;
-			}
-			if ( ! self::child_is_complete( $config, (string) $product->get_meta( '_optic_division', true ) ) ) {
-				continue;
-			}
-			$price = self::get_child_unit_price( $config );
-			if ( $price <= 0 ) {
-				continue;
-			}
-			$min_price = 0.0 === $min_price ? $price : min( $min_price, $price );
-		}
+		$display_price = self::get_default_display_price( $product );
 
-		if ( $min_price > 0 ) {
-			$product->set_regular_price( (string) $min_price );
-			$product->set_price( (string) $min_price );
+		if ( $display_price > 0 ) {
+			$product->set_regular_price( (string) $display_price );
+			$product->set_price( (string) $display_price );
 		}
 	}
 

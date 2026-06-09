@@ -449,8 +449,15 @@
 			if ( $label.length ) {
 				$label.text( getI18n( 'price', 'Price' ) + ':' );
 			}
-			if ( typeof wcOpticFront !== 'undefined' && wcOpticFront.priceRangeHtml ) {
-				$unitDisplay.html( wcOpticFront.priceRangeHtml );
+			var showDefault = isNoPowerMode() || ! supportsNoPowerMode();
+			if ( showDefault ) {
+				if ( typeof wcOpticFront !== 'undefined' && wcOpticFront.defaultPriceHtml ) {
+					$unitDisplay.html( wcOpticFront.defaultPriceHtml );
+				} else if ( typeof wcOpticFront !== 'undefined' && wcOpticFront.defaultPrice ) {
+					$unitDisplay.text( formatPrice( wcOpticFront.defaultPrice ) );
+				}
+			} else {
+				$unitDisplay.text( '' );
 			}
 			if ( $totalRow.length ) {
 				$totalRow.prop( 'hidden', true );

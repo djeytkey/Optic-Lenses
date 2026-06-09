@@ -65,7 +65,7 @@ class WC_Optic_Pricing {
 	 * @return float
 	 */
 	public static function get_unit_price( WC_Product $product ) {
-		$price = WC_Optic_SKU::get_min_child_price( $product );
+		$price = WC_Optic_SKU::get_default_display_price( $product );
 		if ( $price > 0 ) {
 			return $price;
 		}
@@ -79,30 +79,33 @@ class WC_Optic_Pricing {
 	}
 
 	/**
-	 * Formatted price range HTML for an optic parent product.
+	 * Formatted single default price HTML for an optic parent product.
+	 *
+	 * Uses the default internal child (no-power for color lenses, otherwise first child).
 	 *
 	 * @param WC_Product $product Product.
 	 * @return string
 	 */
-	public static function format_price_range_html( WC_Product $product ) {
-		$range = WC_Optic_SKU::get_child_price_range( $product );
-		if ( $range['min'] <= 0 ) {
+	public static function format_display_price_html( WC_Product $product ) {
+		$price = WC_Optic_SKU::get_default_display_price( $product );
+		if ( $price <= 0 ) {
 			return '';
 		}
 
-		if ( abs( $range['min'] - $range['max'] ) < 0.0001 ) {
-			return wc_price( $range['min'] );
-		}
-
-		if ( function_exists( 'wc_format_price_range' ) ) {
-			return wc_format_price_range( $range['min'], $range['max'] );
-		}
-
-		return wp_kses_post( wc_price( $range['min'] ) . ' – ' . wc_price( $range['max'] ) );
+		return wc_price( $price );
 	}
 
 	/**
-	 * Replace parent product price with internal product min–max range (loops + single).
+	 * @deprecated Use format_display_price_html().
+	 * @param WC_Product $product Product.
+	 * @return string
+	 */
+	public static function format_price_range_html( WC_Product $product ) {
+		return self::format_display_price_html( $product );
+	}
+
+	/**
+	 * Replace parent product price with the default internal child price (loops + single).
 	 *
 	 * @param string     $price_html Default HTML.
 	 * @param WC_Product $product    Product.
@@ -113,8 +116,8 @@ class WC_Optic_Pricing {
 			return $price_html;
 		}
 
-		$range_html = self::format_price_range_html( $product );
-		return $range_html ? $range_html : $price_html;
+		$display_html = self::format_display_price_html( $product );
+		return $display_html ? $display_html : $price_html;
 	}
 
 	/**

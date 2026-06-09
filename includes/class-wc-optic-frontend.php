@@ -100,14 +100,14 @@ class WC_Optic_Frontend {
 			WC_OPTIC_VERSION,
 			true
 		);
-		$price_range = WC_Optic_SKU::get_child_price_range( $product );
+		$default_price = WC_Optic_SKU::get_default_display_price( $product );
 
 		wp_localize_script(
 			'wc-optic-frontend',
 			'wcOpticFront',
 			array(
-				'priceRange'     => $price_range,
-				'priceRangeHtml' => WC_Optic_Pricing::format_price_range_html( $product ),
+				'defaultPrice'     => $default_price,
+				'defaultPriceHtml' => WC_Optic_Pricing::format_display_price_html( $product ),
 				'summaryPriceSelector' => '.entry-summary > .price, .product-summary > .price, .summary > .price, .product-page-price',
 				'currencySymbol' => get_woocommerce_currency_symbol(),
 				'decimalSep'     => wc_get_price_decimal_separator(),
