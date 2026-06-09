@@ -456,7 +456,7 @@ class WC_Optic_Cart {
 	 *
 	 * @param string $eye_key left|right.
 	 * @param array  $payload Optic payload.
-	 * @return array{display:string, sku:string, unit_price:float, qty:int}
+	 * @return array{display:string, sku:string, unit_price:float, qty:int, line_total:float}
 	 */
 	protected static function get_eye_admin_summary( $eye_key, array $payload, $combined = false ) {
 		$eye = isset( $payload[ $eye_key ] ) && is_array( $payload[ $eye_key ] ) ? $payload[ $eye_key ] : array();
@@ -471,11 +471,14 @@ class WC_Optic_Cart {
 			$qty = self::get_combined_line_quantity( $payload );
 		}
 
+		$unit_price = isset( $eye['unit_price'] ) ? (float) wc_format_decimal( $eye['unit_price'] ) : 0.0;
+
 		return array(
 			'display'    => isset( $eye['display'] ) ? trim( (string) $eye['display'] ) : '',
 			'sku'        => isset( $eye['sku'] ) ? trim( (string) $eye['sku'] ) : '',
-			'unit_price' => isset( $eye['unit_price'] ) ? (float) wc_format_decimal( $eye['unit_price'] ) : 0.0,
+			'unit_price' => $unit_price,
 			'qty'        => $qty,
+			'line_total' => $unit_price > 0 ? (float) wc_format_decimal( $unit_price * $qty ) : 0.0,
 		);
 	}
 
@@ -743,6 +746,13 @@ class WC_Optic_Cart {
 		echo '<span class="wc-optic-line-summary__meta-label">' . esc_html__( 'Quantity', 'wc-optic' ) . '</span>';
 		echo '<span class="wc-optic-line-summary__meta-value">' . esc_html( (string) $data['qty'] ) . '</span>';
 		echo '</div>';
+
+		if ( ! empty( $data['line_total'] ) && $data['line_total'] > 0 ) {
+			echo '<div class="wc-optic-line-summary__meta-row wc-optic-line-summary__meta-row--total">';
+			echo '<span class="wc-optic-line-summary__meta-label">' . esc_html__( 'Total', 'wc-optic' ) . '</span>';
+			echo '<span class="wc-optic-line-summary__meta-value">' . wp_kses_post( wc_price( $data['line_total'] ) ) . '</span>';
+			echo '</div>';
+		}
 
 		echo '</div>';
 		echo '</div>';

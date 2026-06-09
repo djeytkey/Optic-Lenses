@@ -431,6 +431,19 @@ dl.variation:has(> dd.variation-optic-line) {
 	font-weight: 500;
 }
 
+.wc-optic-line-summary__meta-row--total {
+	margin-top: 0.25rem;
+	padding-top: 0.45rem;
+	border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.wc-optic-line-summary__meta-row--total .wc-optic-line-summary__meta-label,
+.wc-optic-line-summary__meta-row--total .wc-optic-line-summary__meta-value {
+	font-weight: 700;
+	font-size: 0.9rem;
+	opacity: 1;
+}
+
 .wc-optic-line-summary__powers {
 	margin: 0;
 	padding: 0;
