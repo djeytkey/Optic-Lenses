@@ -286,3 +286,31 @@
 #optic_product_data_panel .wc-optic-child-actions {
 	margin-top: 0.5em;
 }
+
+.wc-optic-is-hidden {
+	display: none !important;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-controls {
+	display: inline-flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 0.5em 0.75em;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-custom-label {
+	display: inline-flex;
+	align-items: center;
+	margin: 0;
+	font-weight: 400;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-row.wc-optic-backorder-disabled .wc-optic-child-backorder-custom-label,
+#optic_product_data_panel .wc-optic-child-backorder-row.wc-optic-backorder-disabled .wc-optic-child-backorder-qty {
+	display: none;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-consumed-note {
+	display: block;
+	margin-top: 0.35em;
+}

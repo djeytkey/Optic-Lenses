@@ -184,6 +184,22 @@ class WC_Optic_Admin_Settings {
 		}
 		echo '</select>';
 		echo '</p>';
+
+		$backorder_enabled = WC_Optic_SKU::is_backorder_enabled();
+		echo '<p class="form-field wc-optic-global-backorder-field">';
+		echo '<label for="wc_optic_global_backorder_enabled">';
+		echo '<input type="checkbox" name="wc_optic_global_backorder_enabled" id="wc_optic_global_backorder_enabled" value="1" ' . checked( $backorder_enabled, true, false ) . ' />';
+		echo ' <strong>' . esc_html__( 'Allow backorder', 'wc-optic' ) . '</strong>';
+		echo '</label>';
+		echo '<span class="description">' . esc_html__( 'When enabled, customers can purchase beyond physical stock up to the backorder allowance.', 'wc-optic' ) . '</span>';
+		echo '</p>';
+
+		echo '<p class="form-field wc-optic-global-backorder-qty-wrap' . ( $backorder_enabled ? '' : ' wc-optic-is-hidden' ) . '">';
+		echo '<label for="wc_optic_global_backorder_qty"><strong>' . esc_html__( 'Backorder quantity', 'wc-optic' ) . '</strong></label><br />';
+		echo '<input type="number" name="wc_optic_global_backorder_qty" id="wc_optic_global_backorder_qty" class="small-text" min="0" step="1" value="' . esc_attr( (string) WC_Optic_SKU::get_global_backorder_qty() ) . '" />';
+		echo '<span class="description">' . esc_html__( 'Extra units sellable beyond each internal product stock (e.g. stock 5 + backorder 5 = max 10).', 'wc-optic' ) . '</span>';
+		echo '</p>';
+
 		echo '<p><button type="submit" class="button button-secondary">' . esc_html__( 'Save global settings', 'wc-optic' ) . '</button></p>';
 		echo '</div>';
 		echo '</form>';
@@ -685,11 +701,15 @@ class WC_Optic_Admin_Settings {
 			return;
 		}
 
-		$selector_ui = isset( $_POST['wc_optic_global_selector_ui'] ) ? WC_Optic_SKU::set_selector_ui( wp_unslash( $_POST['wc_optic_global_selector_ui'] ) ) : WC_Optic_SKU::get_selector_ui();
+		$selector_ui       = isset( $_POST['wc_optic_global_selector_ui'] ) ? WC_Optic_SKU::set_selector_ui( wp_unslash( $_POST['wc_optic_global_selector_ui'] ) ) : WC_Optic_SKU::get_selector_ui();
+		$backorder_enabled = WC_Optic_SKU::set_backorder_enabled( isset( $_POST['wc_optic_global_backorder_enabled'] ) ? wp_unslash( $_POST['wc_optic_global_backorder_enabled'] ) : '' );
+		$backorder_qty     = $backorder_enabled && isset( $_POST['wc_optic_global_backorder_qty'] )
+			? WC_Optic_SKU::set_global_backorder_qty( wp_unslash( $_POST['wc_optic_global_backorder_qty'] ) )
+			: WC_Optic_SKU::get_global_backorder_qty();
 
 		add_action(
 			'admin_notices',
-			function () use ( $selector_ui ) {
+			function () use ( $selector_ui, $backorder_enabled, $backorder_qty ) {
 				echo '<div class="notice notice-success is-dismissible"><p>';
 				echo esc_html(
 					sprintf(
@@ -698,6 +718,19 @@ class WC_Optic_Admin_Settings {
 						$selector_ui
 					)
 				);
+				if ( $backorder_enabled ) {
+					echo ' ';
+					echo esc_html(
+						sprintf(
+							/* translators: %d: backorder quantity */
+							__( 'Backorder enabled (%d extra unit(s) per internal product).', 'wc-optic' ),
+							$backorder_qty
+						)
+					);
+				} else {
+					echo ' ';
+					echo esc_html__( 'Backorder disabled.', 'wc-optic' );
+				}
 				echo '</p></div>';
 			}
 		);

@@ -300,4 +300,19 @@
 				} );
 		} );
 	} );
+
+	$( function () {
+		var $enabled = $( '#wc_optic_global_backorder_enabled' );
+		var $qtyWrap = $( '.wc-optic-global-backorder-qty-wrap' );
+
+		function syncGlobalBackorderQtyVisibility() {
+			if ( ! $enabled.length || ! $qtyWrap.length ) {
+				return;
+			}
+			$qtyWrap.toggleClass( 'wc-optic-is-hidden', ! $enabled.is( ':checked' ) );
+		}
+
+		syncGlobalBackorderQtyVisibility();
+		$enabled.on( 'change', syncGlobalBackorderQtyVisibility );
+	} );
 }( jQuery ) );

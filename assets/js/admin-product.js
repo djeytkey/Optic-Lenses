@@ -225,6 +225,53 @@
 		} );
 	}
 
+	function getGlobalBackorderQty() {
+		if ( ! wcOpticAdmin || ! wcOpticAdmin.backorderEnabled ) {
+			return 0;
+		}
+		return parseInt( wcOpticAdmin.globalBackorderQty, 10 ) || 0;
+	}
+
+	function syncChildBackorderFields( $block ) {
+		if ( ! $block || ! $block.length ) {
+			return;
+		}
+
+		var enabled = !!( wcOpticAdmin && wcOpticAdmin.backorderEnabled );
+		var $row = $block.find( '.wc-optic-child-backorder-row' );
+		var $display = $block.find( '.wc-optic-child-backorder-display' );
+		var $custom = $block.find( '.wc-optic-child-backorder-custom' );
+		var $qty = $block.find( '.wc-optic-child-backorder-qty' );
+		var isCustom = $custom.is( ':checked' );
+
+		if ( ! $row.length ) {
+			return;
+		}
+
+		$row.toggleClass( 'wc-optic-backorder-disabled', ! enabled );
+
+		if ( ! enabled ) {
+			$display.val( '0' );
+			$qty.prop( 'disabled', true );
+			return;
+		}
+
+		if ( isCustom ) {
+			$qty.prop( 'disabled', false );
+			$display.val( $qty.val() || '0' );
+			return;
+		}
+
+		$qty.prop( 'disabled', true );
+		$display.val( String( getGlobalBackorderQty() ) );
+	}
+
+	function syncAllChildBackorderFields() {
+		getChildBlocks().each( function () {
+			syncChildBackorderFields( $( this ) );
+		} );
+	}
+
 	function initChildBlock( $block ) {
 		if ( ! $block || ! $block.length ) {
 			return;
@@ -233,6 +280,7 @@
 			destroySelect2( $( this ) );
 			initSelect2( $( this ) );
 		} );
+		syncChildBackorderFields( $block );
 		refreshBlockSkuPreview( $block );
 	}
 
@@ -286,6 +334,7 @@
 		applyDivisionPowerFields();
 		initAllOpticSelect2();
 		renumberBlocks();
+		syncAllChildBackorderFields();
 		refreshAllSkuPreviews();
 	}
 
@@ -340,6 +389,15 @@
 		} )
 		.on( 'input', '.wc-optic-child-unit-price', function () {
 			refreshBlockSkuPreview( $( this ).closest( '.wc-optic-child-config' ) );
+		} )
+		.on( 'change', '.wc-optic-child-backorder-custom', function () {
+			syncChildBackorderFields( $( this ).closest( '.wc-optic-child-config' ) );
+		} )
+		.on( 'input', '.wc-optic-child-backorder-qty', function () {
+			syncChildBackorderFields( $( this ).closest( '.wc-optic-child-config' ) );
+		} )
+		.on( 'input', '.wc-optic-child-stock-qty', function () {
+			syncChildBackorderFields( $( this ).closest( '.wc-optic-child-config' ) );
 		} )
 		.on( 'change', '#_optic_division', function () {
 			applyDivisionPowerFields();

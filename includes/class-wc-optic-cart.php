@@ -1287,12 +1287,11 @@ class WC_Optic_Cart {
 					continue;
 				}
 
-				$current_stock = WC_Optic_SKU::get_child_stock_qty( $config );
-				if ( null === $current_stock ) {
+				if ( null === WC_Optic_SKU::get_child_stock_qty( $config ) ) {
 					continue;
 				}
 
-				$config['stock_qty'] = (string) max( 0, $current_stock + (int) $child_deltas[ $child_id ] );
+				WC_Optic_SKU::apply_child_stock_delta( $config, (int) $child_deltas[ $child_id ] );
 			}
 			unset( $config );
 
@@ -1432,17 +1431,17 @@ class WC_Optic_Cart {
 	 * @return int|null
 	 */
 	public static function get_remaining_child_stock( WC_Product $product, array $config, $exclude_cart_item_key = '' ) {
-		$stock_qty = WC_Optic_SKU::get_child_stock_qty( $config );
-		if ( null === $stock_qty ) {
+		$sellable_qty = WC_Optic_SKU::get_child_sellable_qty( $config );
+		if ( null === $sellable_qty ) {
 			return null;
 		}
 
 		$child_id = isset( $config['id'] ) ? (string) $config['id'] : '';
 		if ( '' === $child_id ) {
-			return $stock_qty;
+			return $sellable_qty;
 		}
 
-		return max( 0, $stock_qty - self::get_reserved_child_quantity( $product, $child_id, $exclude_cart_item_key ) );
+		return max( 0, $sellable_qty - self::get_reserved_child_quantity( $product, $child_id, $exclude_cart_item_key ) );
 	}
 
 	/**

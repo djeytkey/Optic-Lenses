@@ -147,13 +147,13 @@
 
 		var current = $select.val();
 		var placeholder = $select.data( 'placeholder' ) || getI18n( 'select', '— Select —' );
-		var ruptureLabel = getI18n( 'rupture', 'Rupture' );
+		var outOfStockLabel = getI18n( 'outOfStockOption', 'Out of stock' );
 		var html = '<option value=""></option>';
 
 		sortTermIds( powerKey, Object.keys( termIds ) ).forEach( function ( tid ) {
 			var label = ( matrix.terms[ powerKey ] && matrix.terms[ powerKey ][ tid ] ) || tid;
 			var purchasable = optionIsPurchasable( partial, powerKey, tid );
-			var suffix = purchasable ? '' : ' (' + ruptureLabel + ')';
+			var suffix = purchasable ? '' : ' (' + outOfStockLabel + ')';
 			html += '<option value="' + tid + '"' + ( purchasable ? '' : ' disabled class="wc-optic-option--rupture"' ) + '>' + label + suffix + '</option>';
 		} );
 
@@ -228,7 +228,7 @@
 		$hidden.val( child.id );
 		if ( ! childHasStock( child ) ) {
 			$notice.prop( 'hidden', false );
-			$notice.text( getI18n( 'rupture', 'Rupture' ) );
+			$notice.text( getI18n( 'outOfStockOption', 'Out of stock' ) );
 		} else {
 			$notice.prop( 'hidden', true );
 			$notice.text( '' );
@@ -372,7 +372,7 @@
 			$hidden.val( child.id );
 			if ( ! childHasStock( child ) ) {
 				$notice.prop( 'hidden', false );
-				$notice.text( getI18n( 'rupture', 'Rupture' ) );
+				$notice.text( getI18n( 'outOfStockOption', 'Out of stock' ) );
 			} else {
 				$notice.prop( 'hidden', true );
 				$notice.text( '' );

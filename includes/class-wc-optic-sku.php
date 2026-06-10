@@ -28,8 +28,10 @@ class WC_Optic_SKU {
 
 	const CHILD_META_KEY = '_optic_child_configs';
 	const SELECTOR_META_KEY = '_optic_selector_ui';
-	const GLOBAL_SELECTOR_OPTION = 'wc_optic_selector_ui';
-	const MAX_LEGACY_SYNTHETIC_CHILDREN = 200;
+	const GLOBAL_SELECTOR_OPTION           = 'wc_optic_selector_ui';
+	const GLOBAL_BACKORDER_ENABLED_OPTION  = 'wc_optic_backorder_enabled';
+	const GLOBAL_BACKORDER_QTY_OPTION      = 'wc_optic_backorder_qty';
+	const MAX_LEGACY_SYNTHETIC_CHILDREN    = 200;
 
 	/**
 	 * Product-level derived catalog index meta keys.
@@ -127,6 +129,96 @@ class WC_Optic_SKU {
 
 		update_option( self::GLOBAL_SELECTOR_OPTION, $value, false );
 		return $value;
+	}
+
+	/**
+	 * Whether storefront backorder is enabled globally.
+	 *
+	 * @return bool
+	 */
+	public static function is_backorder_enabled() {
+		return 'yes' === (string) get_option( self::GLOBAL_BACKORDER_ENABLED_OPTION, 'no' );
+	}
+
+	/**
+	 * Persist global backorder enabled flag.
+	 *
+	 * @param mixed $value Posted value.
+	 * @return bool
+	 */
+	public static function set_backorder_enabled( $value ) {
+		$enabled = ! empty( $value ) && 'no' !== (string) $value;
+		update_option( self::GLOBAL_BACKORDER_ENABLED_OPTION, $enabled ? 'yes' : 'no', false );
+		return $enabled;
+	}
+
+	/**
+	 * Global extra sellable units beyond physical stock per internal product.
+	 *
+	 * @return int
+	 */
+	public static function get_global_backorder_qty() {
+		return max( 0, absint( get_option( self::GLOBAL_BACKORDER_QTY_OPTION, 0 ) ) );
+	}
+
+	/**
+	 * Persist global backorder quantity.
+	 *
+	 * @param mixed $value Posted value.
+	 * @return int
+	 */
+	public static function set_global_backorder_qty( $value ) {
+		$qty = max( 0, absint( $value ) );
+		update_option( self::GLOBAL_BACKORDER_QTY_OPTION, $qty, false );
+		return $qty;
+	}
+
+	/**
+	 * Effective backorder allowance for one internal product.
+	 *
+	 * @param array $config Child config.
+	 * @return int
+	 */
+	public static function get_child_backorder_qty( array $config ) {
+		if ( ! self::is_backorder_enabled() ) {
+			return 0;
+		}
+
+		if ( ! empty( $config['backorder_custom'] ) ) {
+			return max( 0, absint( $config['backorder_qty'] ?? 0 ) );
+		}
+
+		return self::get_global_backorder_qty();
+	}
+
+	/**
+	 * Units already sold against the backorder allowance.
+	 *
+	 * @param array $config Child config.
+	 * @return int
+	 */
+	public static function get_child_backorder_consumed( array $config ) {
+		return max( 0, absint( $config['backorder_consumed'] ?? 0 ) );
+	}
+
+	/**
+	 * Total sellable units for one internal product (stock + remaining backorder).
+	 *
+	 * @param array $config Child config.
+	 * @return int|null Null when stock is not managed.
+	 */
+	public static function get_child_sellable_qty( array $config ) {
+		$stock = self::get_child_stock_qty( $config );
+		if ( null === $stock ) {
+			return null;
+		}
+
+		$backorder = self::get_child_backorder_qty( $config );
+		if ( $backorder < 1 ) {
+			return $stock;
+		}
+
+		return max( 0, $stock + $backorder - self::get_child_backorder_consumed( $config ) );
 	}
 
 	/**
@@ -713,15 +805,18 @@ class WC_Optic_SKU {
 		}
 
 		$out = array(
-			'id'         => $id,
-			'label'      => $label,
-			'enabled'    => empty( $raw['enabled'] ) ? false : true,
-			'sort'       => isset( $raw['sort'] ) ? (int) $raw['sort'] : $index,
-			'unit_price' => '',
-			'stock_qty'  => '',
-			'catalog'    => array(),
-			'powers'     => array(),
-			'sku'        => '',
+			'id'                 => $id,
+			'label'              => $label,
+			'enabled'            => empty( $raw['enabled'] ) ? false : true,
+			'sort'               => isset( $raw['sort'] ) ? (int) $raw['sort'] : $index,
+			'unit_price'         => '',
+			'stock_qty'          => '',
+			'backorder_custom'   => ! empty( $raw['backorder_custom'] ),
+			'backorder_qty'      => '',
+			'backorder_consumed' => isset( $raw['backorder_consumed'] ) ? (string) max( 0, absint( $raw['backorder_consumed'] ) ) : '0',
+			'catalog'            => array(),
+			'powers'             => array(),
+			'sku'                => '',
 		);
 
 		if ( isset( $raw['unit_price'] ) && '' !== trim( (string) $raw['unit_price'] ) ) {
@@ -729,6 +824,9 @@ class WC_Optic_SKU {
 		}
 		if ( isset( $raw['stock_qty'] ) && '' !== trim( (string) $raw['stock_qty'] ) ) {
 			$out['stock_qty'] = (string) absint( wp_unslash( $raw['stock_qty'] ) );
+		}
+		if ( $out['backorder_custom'] && isset( $raw['backorder_qty'] ) && '' !== trim( (string) $raw['backorder_qty'] ) ) {
+			$out['backorder_qty'] = (string) absint( wp_unslash( $raw['backorder_qty'] ) );
 		}
 
 		foreach ( self::META_KEYS as $type => $meta_key ) {
@@ -852,12 +950,76 @@ class WC_Optic_SKU {
 	 * @return bool
 	 */
 	public static function child_is_in_stock( array $config, $requested_quantity = 1 ) {
-		$stock = self::get_child_stock_qty( $config );
-		if ( null === $stock ) {
+		$sellable = self::get_child_sellable_qty( $config );
+		if ( null === $sellable ) {
 			return true;
 		}
 
-		return $stock >= max( 1, (int) $requested_quantity );
+		return $sellable >= max( 1, (int) $requested_quantity );
+	}
+
+	/**
+	 * Preserve backorder consumption counters when admin saves child configs.
+	 *
+	 * @param WC_Product $product       Product.
+	 * @param array      $child_configs Normalized child configs.
+	 * @return array<int, array<string, mixed>>
+	 */
+	public static function preserve_child_backorder_consumed( WC_Product $product, array $child_configs ) {
+		$existing = array();
+		foreach ( self::get_child_configs( $product ) as $config ) {
+			$child_id = isset( $config['id'] ) ? (string) $config['id'] : '';
+			if ( '' === $child_id ) {
+				continue;
+			}
+			$existing[ $child_id ] = self::get_child_backorder_consumed( $config );
+		}
+
+		foreach ( $child_configs as &$config ) {
+			$child_id = isset( $config['id'] ) ? (string) $config['id'] : '';
+			if ( '' !== $child_id && isset( $existing[ $child_id ] ) ) {
+				$config['backorder_consumed'] = (string) $existing[ $child_id ];
+			}
+		}
+		unset( $config );
+
+		return $child_configs;
+	}
+
+	/**
+	 * Apply a stock delta to one child config, consuming backorder when needed.
+	 *
+	 * @param array $config Mutable child config.
+	 * @param int   $delta  Negative to reduce, positive to restore.
+	 */
+	public static function apply_child_stock_delta( array &$config, $delta ) {
+		$delta = (int) $delta;
+		if ( 0 === $delta ) {
+			return;
+		}
+
+		$current_stock = self::get_child_stock_qty( $config );
+		if ( null === $current_stock ) {
+			return;
+		}
+
+		$qty         = abs( $delta );
+		$is_reduce   = $delta < 0;
+		$consumed    = self::get_child_backorder_consumed( $config );
+		$backorder   = self::get_child_backorder_qty( $config );
+
+		if ( $is_reduce ) {
+			$from_stock     = min( $qty, $current_stock );
+			$from_backorder = min( $qty - $from_stock, max( 0, $backorder - $consumed ) );
+			$config['stock_qty']          = (string) max( 0, $current_stock - $from_stock );
+			$config['backorder_consumed'] = (string) ( $consumed + $from_backorder );
+			return;
+		}
+
+		$from_backorder = min( $qty, $consumed );
+		$from_stock     = $qty - $from_backorder;
+		$config['backorder_consumed'] = (string) max( 0, $consumed - $from_backorder );
+		$config['stock_qty']          = (string) max( 0, $current_stock + $from_stock );
 	}
 
 	/**

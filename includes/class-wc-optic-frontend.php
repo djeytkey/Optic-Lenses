@@ -126,7 +126,6 @@ class WC_Optic_Frontend {
 					'outOfStock'     => __( 'Out of stock', 'wc-optic' ),
 					'stockAvailable' => __( 'Available', 'wc-optic' ),
 					'outOfStockOption' => __( 'Out of stock', 'wc-optic' ),
-					'rupture'        => __( 'Rupture', 'wc-optic' ),
 					'comboUnavailable' => __( 'This combination is not available.', 'wc-optic' ),
 					'noPower'          => __( 'No power', 'wc-optic' ),
 					'power'            => __( 'Power', 'wc-optic' ),
