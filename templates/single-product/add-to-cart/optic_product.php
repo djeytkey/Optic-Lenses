@@ -3,7 +3,7 @@
  * Optic product add to cart form.
  *
  * @package WC_Optic_Product
- * @version 1.0.0
+ * @version 1.2.0
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -16,8 +16,6 @@ if ( ! $division ) {
 	return;
 }
 
-$divisions         = WC_Optic_Plugin::get_divisions();
-$div_label         = isset( $divisions[ $division ] ) ? $divisions[ $division ]['label'] : $division;
 $storefront_matrix    = WC_Optic_SKU::get_storefront_matrix( $product );
 $supports_no_power    = WC_Optic_SKU::division_supports_no_power_mode( $division );
 $can_choose_different = count( $storefront_matrix['children'] ?? array() ) > 1;
@@ -39,27 +37,16 @@ do_action( 'woocommerce_before_add_to_cart_form' );
 <form class="cart wc-optic-cart-form" action="<?php echo esc_url( apply_filters( 'woocommerce_add_to_cart_form_action', $product->get_permalink() ) ); ?>" method="post" enctype="multipart/form-data">
 	<?php wp_nonce_field( 'wc_optic_add_to_cart', 'wc_optic_nonce' ); ?>
 
-	<p class="wc-optic-division">
-		<strong><?php esc_html_e( 'Optical division', 'wc-optic' ); ?>:</strong>
-		<?php echo esc_html( $div_label ); ?>
-	</p>
-
 	<?php
+	$default_price      = WC_Optic_SKU::get_default_display_price( $product );
 	$display_price_html = WC_Optic_Pricing::format_display_price_html( $product );
-	if ( $display_price_html ) :
-		$default_price = WC_Optic_SKU::get_default_display_price( $product );
-		?>
-		<div class="wc-optic-pricing" data-default-price="<?php echo esc_attr( (string) $default_price ); ?>">
-			<p class="wc-optic-unit-price">
-				<strong class="wc-optic-price-label"><?php esc_html_e( 'Price', 'wc-optic' ); ?>:</strong>
-				<span id="wc_optic_unit_price_display"><?php echo wp_kses_post( $display_price_html ); ?></span>
-			</p>
-			<p class="wc-optic-line-total" hidden>
-				<strong><?php esc_html_e( 'Estimated total', 'wc-optic' ); ?>:</strong>
-				<span id="wc_optic_line_total_display"></span>
-			</p>
-		</div>
-	<?php endif; ?>
+	?>
+	<div class="wc-optic-pricing" hidden aria-hidden="true" data-default-price="<?php echo esc_attr( (string) $default_price ); ?>">
+		<span id="wc_optic_unit_price_display"><?php echo $display_price_html ? wp_kses_post( $display_price_html ) : ''; ?></span>
+		<p class="wc-optic-line-total" hidden>
+			<span id="wc_optic_line_total_display"></span>
+		</p>
+	</div>
 
 	<div class="wc-optic-config-card">
 		<?php if ( $supports_no_power ) : ?>

@@ -4,6 +4,22 @@ Toutes les modifications notables de **Alwaleed Optics Products** sont document�
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.2.0] — 2026-06-09
+
+### Ajouté
+
+- **Lentilles couleur** : choix **No power** / **Power** (défaut No power) ; no power = SPH catalogue **+0.00**.
+- **Prix unique** en boutique (plus de fourchette min–max) : no power pour color lenses, prix le plus bas pour les autres divisions.
+- **Total par section** œil dans le résumé panier/checkout (`wc-optic-line-summary`).
+- Module **Flatsome** : panier et paiement en cartes (`class-wc-optic-flatsome.php`, `flatsome-cart-checkout.css`).
+- Détection SPH plano : `WC_Optic_Catalog::sph_term_is_zero_power()`.
+- Document **`SESSION_HANDOFF.md`**.
+
+### Modifié
+
+- Fiche produit : division optique et bloc prix du formulaire **masqués** (prix WooCommerce / Flatsome inchangé ; sync JS via éléments cachés).
+- `format_display_price_html()` remplace l’affichage par fourchette ; prix parent synchronisé sur le produit interne par défaut.
+
 ## [1.1.0] — 2026-06-03
 
 ### Ajouté
