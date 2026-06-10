@@ -512,7 +512,7 @@ class WC_Optic_SKU {
 	/**
 	 * Internal child used for storefront default price display (option B).
 	 *
-	 * Color lenses: no-power (+0.00) child. Other divisions: first enabled complete child.
+	 * Color lenses: no-power (+0.00) child. Other divisions: lowest-priced enabled child.
 	 *
 	 * @param WC_Product $product Product.
 	 * @return array<string, mixed>|null
@@ -527,13 +527,26 @@ class WC_Optic_SKU {
 			}
 		}
 
+		$best_config = null;
+		$best_price  = 0.0;
+
 		foreach ( self::get_enabled_child_configs( $product ) as $config ) {
-			if ( self::child_is_complete( $config, $division ) ) {
-				return $config;
+			if ( ! self::child_is_complete( $config, $division ) ) {
+				continue;
+			}
+
+			$price = self::get_child_unit_price( $config );
+			if ( $price <= 0 ) {
+				continue;
+			}
+
+			if ( null === $best_config || $price < $best_price ) {
+				$best_config = $config;
+				$best_price  = $price;
 			}
 		}
 
-		return null;
+		return $best_config;
 	}
 
 	/**

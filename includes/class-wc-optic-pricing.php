@@ -81,7 +81,7 @@ class WC_Optic_Pricing {
 	/**
 	 * Formatted single default price HTML for an optic parent product.
 	 *
-	 * Uses the default internal child (no-power for color lenses, otherwise first child).
+	 * Uses the default internal child (no-power for color lenses, otherwise lowest price).
 	 *
 	 * @param WC_Product $product Product.
 	 * @return string
