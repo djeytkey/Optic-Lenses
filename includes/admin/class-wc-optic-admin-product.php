@@ -300,7 +300,7 @@ class WC_Optic_Admin_Product {
 		echo '<span class="wc-optic-child-backorder-effective__label">' . esc_html__( 'extra units', 'wc-optic' ) . '</span>';
 		echo '</div>';
 
-		echo '<div class="wc-optic-child-backorder-card__actions">';
+		echo '<div class="wc-optic-child-backorder-card__controls">';
 		echo '<label class="wc-optic-backorder-toggle wc-optic-child-backorder-custom-label">';
 		echo '<input type="checkbox" class="wc-optic-child-backorder-custom wc-optic-backorder-toggle__input" name="' . esc_attr( $pf ) . '[backorder_custom]" value="1" ' . checked( $backorder_custom, true, false ) . ' />';
 		echo '<span class="wc-optic-backorder-toggle__switch" aria-hidden="true"></span>';

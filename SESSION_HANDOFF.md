@@ -535,4 +535,4 @@ php -l includes/admin/class-wc-optic-admin-settings.php
 
 ---
 
-*Dernière mise à jour : 2026-06-10 — restylage UI backorder admin (Settings + fiche produit).*
+*Dernière mise à jour : 2026-06-10 — fix layout carte backorder produit (colonne, override labels WooCommerce).*
