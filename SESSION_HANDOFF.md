@@ -1,26 +1,33 @@
 # Session Handoff — Optic-Lenses (Alwaleed Optics Products)
 
-**Date :** 2026-06-09  
+**Date :** 2026-06-10 (dernière mise à jour)  
 **Plugin :** `wp-content/plugins/Optic-Lenses`  
-**Version déclarée :** 1.2.3 (`woocommerce-optic-product.php`)  
+**Version déclarée :** 1.2.3 (`woocommerce-optic-product.php`) — *backorder + menu admin ajoutés en session 2026-06-10, bump version à planifier*  
 **Thème cible boutique :** Flatsome (parent ou enfant)
 
-Ce document résume tout le travail réalisé pendant cette session Cursor, pour permettre à un autre développeur (ou une future session IA) de reprendre sans perte de contexte.
+Ce document résume tout le travail réalisé sur le plugin (sessions Cursor cumulées), pour permettre à un autre développeur (ou une future session IA) de reprendre sans perte de contexte.
+
+> **Convention :** à chaque prompt / livraison significative, mettre à jour ce fichier (`SESSION_HANDOFF.md`). Lors d’un bump de version, synchroniser aussi `CHANGELOG.md` et `woocommerce-optic-product.php` / `composer.json`.
 
 ---
 
 ## 1. Résumé exécutif
 
-Cette session a porté sur **l’expérience boutique client** pour les produits optiques WooCommerce (`optic_product`), avec quatre axes principaux :
+### Session 2026-06-10 (courante)
+
+1. **Backorder** — paramétrage global (Settings) + override par produit interne ; stock vendable = stock physique + allowance backorder − consommé − panier.
+2. **Menu admin WordPress** — menu principal **Alwaleed Optics** (sous Dashboard) ; migration **Settings** et **Import** hors du menu WooCommerce.
+
+### Session 2026-06-09 (précédente)
 
 1. **Lentilles couleur** — choix **No power / Power** (défaut : No power).
 2. **Prix unique** — fin des fourchettes min–max ; prix basé sur la **sélection par défaut** (option B).
 3. **Panier / checkout** — total par section œil + habillage **Flatsome moderne**.
 4. **Règles métier affinées** — « sans puissance » = SPH **+0.00** ; autres divisions = **prix le plus bas**.
 5. **UI fiche produit** — toggle No power/Power style **Eyewa** (pill) ; division et bloc prix formulaire **masqués** (v1.2.0).
-6. **Version** — bump **1.2.3** ; à chaque bump : mettre à jour **`CHANGELOG.md`** et **`SESSION_HANDOFF.md`** (convention session).
+6. **Version** — bump **1.2.3** (qty centrées, labels grille).
 
-Aucun commit git n’a été demandé ni créé pendant la session.
+Aucun commit git n’a été demandé ni créé pendant ces sessions.
 
 ---
 
@@ -156,20 +163,105 @@ Enregistré dans `class-wc-optic-plugin.php` et `class-wc-optic-autoload.php`.
 
 ---
 
-## 3. Architecture & fichiers modifiés (session)
+### 2.7 Backorder — achat au-delà du stock (session 2026-06-10)
+
+**Objectif :** autoriser la vente au-delà du stock physique, avec une allowance configurable globalement et optionnellement par produit interne.
+
+#### Settings globaux (`Alwaleed Optics → Settings`)
+
+| Option | Clé WP | Comportement |
+|--------|--------|--------------|
+| **Allow backorder** | `wc_optic_backorder_enabled` (`yes`/`no`) | Active le backorder sur toute la boutique |
+| **Backorder quantity** | `wc_optic_backorder_qty` | Unités **supplémentaires** vendables par produit interne (ex. stock 5 + backorder 5 → **max 10**) |
+
+UI : case à cocher + champ numérique (masqué si backorder désactivé). JS : `assets/js/admin-settings.js`.
+
+#### Fiche produit — produit interne
+
+Sous **Stock quantity** :
+
+| Élément | Rôle |
+|---------|------|
+| **Backorder allowed** | Champ `disabled` — valeur effective affichée |
+| **Custom** | Case à cocher : override du backorder global pour cet interne |
+| Champ qty custom | Éditable si Custom coché ; sinon règle globale |
+| Note consommé | Affiche `N backorder unit(s) already sold` si `backorder_consumed > 0` |
+
+Méta enfant : `backorder_custom`, `backorder_qty`, `backorder_consumed` (dans `_optic_child_configs`).
+
+#### Formule stock disponible
+
+```text
+sellable = stock_physique + backorder_allowance − backorder_consumed
+remaining = sellable − quantité_réservée_panier
+```
+
+Exemple : stock 5, backorder 5, panier 3 → **7** disponibles.
+
+#### Méthodes PHP centrales
+
+```text
+WC_Optic_SKU::is_backorder_enabled()
+WC_Optic_SKU::get_global_backorder_qty()
+WC_Optic_SKU::get_child_backorder_qty( $config )
+WC_Optic_SKU::get_child_sellable_qty( $config )
+WC_Optic_SKU::apply_child_stock_delta( &$config, $delta )  // commande : stock d’abord, puis backorder
+WC_Optic_SKU::preserve_child_backorder_consumed( $product, $children )  // sauvegarde admin
+WC_Optic_Cart::get_remaining_child_stock( $product, $config )  // utilise sellable qty
+```
+
+**Boutique :** matrice JS (`stock`, `inStock`) et validation panier/checkout utilisent `get_remaining_child_stock()` — pas de changement JS frontend dédié requis.
+
+**Fichiers :** `class-wc-optic-sku.php`, `class-wc-optic-cart.php`, `class-wc-optic-admin-settings.php`, `class-wc-optic-admin-product.php`, `admin-settings.js`, `admin-product.js`, `admin.css`.
+
+---
+
+### 2.8 Menu admin — Alwaleed Optics (session 2026-06-10)
+
+**Avant :** Settings et Import étaient des sous-menus **WooCommerce**.
+
+**Après :** menu principal WordPress :
+
+```text
+Dashboard
+Alwaleed Optics          ← position 3, dashicons-visibility
+  ├── Settings           page=wc-optic-settings
+  └── Import             page=wc-optic-import
+```
+
+**Classe :** `includes/admin/class-wc-optic-admin-menu.php` (`WC_Optic_Admin_Menu`).
+
+| Constante | Valeur | Usage |
+|-----------|--------|--------|
+| `PARENT_SLUG` | `wc-optic-settings` | Slug menu parent |
+| `MENU_POSITION` | `3` | Juste sous Dashboard |
+| `SETTINGS_SCREEN` | `toplevel_page_wc-optic-settings` | Hook `admin_enqueue_scripts` Settings |
+| `IMPORT_SCREEN` | `wc-optic-settings_page_wc-optic-import` | Hook `admin_enqueue_scripts` Import |
+
+Les URLs admin (`admin.php?page=wc-optic-settings` / `wc-optic-import`) sont **inchangées** — liens internes et favoris restent valides.
+
+Enregistrement : `WC_Optic_Admin_Menu::hooks()` dans `class-wc-optic-plugin.php` ; map autoload dans `class-wc-optic-autoload.php`.
+
+---
+
+## 3. Architecture & fichiers modifiés
 
 ### PHP — includes
 
-| Fichier | Rôle session |
-|---------|----------------|
+| Fichier | Rôle |
+|---------|------|
+| `admin/class-wc-optic-admin-menu.php` | **Nouveau (2026-06-10)** — menu principal Alwaleed Optics |
+| `admin/class-wc-optic-admin-settings.php` | Settings globaux + backorder ; plus de sous-menu WooCommerce |
+| `admin/class-wc-optic-admin-import.php` | Import catalogue ; hook screen sous menu Alwaleed Optics |
+| `admin/class-wc-optic-admin-product.php` | Champs backorder par produit interne |
 | `class-wc-optic-catalog.php` | `sph_term_is_zero_power()`, `sph_value_is_zero_power()` |
-| `class-wc-optic-sku.php` | No-power, prix défaut, matrice storefront, `persist_child_data` |
+| `class-wc-optic-sku.php` | No-power, prix défaut, **backorder**, matrice storefront, `persist_child_data` |
 | `class-wc-optic-pricing.php` | `format_display_price_html()`, filtre `get_price_html` |
-| `class-wc-optic-cart.php` | `power_mode`, total ligne résumé, qty markup, enqueue conditionnel |
-| `class-wc-optic-frontend.php` | `has_child_options()`, i18n, `defaultPriceHtml` |
-| `class-wc-optic-flatsome.php` | **Nouveau** — détection Flatsome + assets |
-| `class-wc-optic-plugin.php` | `WC_Optic_Flatsome::hooks()` |
-| `class-wc-optic-autoload.php` | Map `WC_Optic_Flatsome` |
+| `class-wc-optic-cart.php` | Panier, **stock sellable/backorder**, `apply_child_stock_delta` |
+| `class-wc-optic-frontend.php` | Stock HTML, `product_is_in_stock()` via remaining |
+| `class-wc-optic-flatsome.php` | Détection Flatsome + assets panier/checkout |
+| `class-wc-optic-plugin.php` | `WC_Optic_Admin_Menu::hooks()`, Flatsome, etc. |
+| `class-wc-optic-autoload.php` | Map classes admin + Flatsome |
 
 ### Templates
 
@@ -183,8 +275,11 @@ Enregistré dans `class-wc-optic-plugin.php` et `class-wc-optic-autoload.php`.
 |---------|---------------|
 | `assets/js/frontend.js` | Power mode, prix défaut, pas de range |
 | `assets/js/cart.js` | Inchangé (sync qty) |
+| `assets/js/admin-settings.js` | Toggle visibilité champ backorder qty global |
+| `assets/js/admin-product.js` | Toggle Custom backorder, sync affichage par interne |
 | `assets/css/frontend.css` | Pill Eyewa power mode, line-summary total, qty centrées, labels grille |
-| `assets/css/flatsome-cart-checkout.css` | **Nouveau** — styles panier/checkout Flatsome |
+| `assets/css/admin.css` | Styles backorder admin, `.wc-optic-is-hidden` |
+| `assets/css/flatsome-cart-checkout.css` | Styles panier/checkout Flatsome |
 
 ---
 
@@ -258,6 +353,18 @@ S’assurer qu’une entrée **+0.00** existe et est reconnaissable (`name`, `sl
 - Prix affiché en boutique = **minimum** des produits internes actifs.
 - Client doit sélectionner toutes les puissances de la division avant add-to-cart.
 
+### Backorder
+
+1. **Alwaleed Optics → Settings** : cocher **Allow backorder**, définir **Backorder quantity** (ex. 5).
+2. Par défaut, tous les produits internes héritent de cette allowance.
+3. Sur la fiche produit optique : cocher **Custom** sur un interne pour un backorder spécifique.
+4. Vérifier en boutique : quantité max = stock + backorder (moins panier).
+
+### Navigation admin
+
+- **Alwaleed Optics → Settings** — catalogue, divisions, paramètres globaux (selector UI, backorder).
+- **Alwaleed Optics → Import** — import Excel/CSV par onglet catalogue.
+
 ---
 
 ## 7. i18n ajoutés (`wc-optic`)
@@ -270,6 +377,12 @@ S’assurer qu’une entrée **+0.00** existe et est reconnaissable (`name`, `sl
 | This product is not available without power. | Erreur no-power indisponible |
 | Total | Total par section œil (panier) |
 | Qty | Quantité panier (mode single) |
+| Allow backorder | Settings globaux |
+| Backorder quantity | Settings globaux |
+| Backorder allowed | Produit interne (admin) |
+| Custom | Override backorder par interne |
+| N backorder unit(s) already sold | Note admin consommation backorder |
+| Settings / Import | Sous-menus Alwaleed Optics |
 
 Domaine : `wc-optic` — traduction WPML via String Translation si actif.
 
@@ -310,6 +423,17 @@ Domaine : `wc-optic` — traduction WPML via String Translation si actif.
 
 - [ ] Sauvegarde produit : prix parent = prix par défaut (no-power ou min)
 - [ ] Produit interne +0.00 sans doublon catalogue
+- [ ] Menu **Alwaleed Optics** visible sous Dashboard (pas sous WooCommerce)
+- [ ] Settings et Import accessibles depuis le nouveau menu
+
+### Backorder
+
+- [ ] Settings : activer backorder + qty 5 → sauvegarde OK
+- [ ] Interne stock 5 + backorder global 5 → fiche client max qty **10**
+- [ ] 3 en panier → max qty **7** sur la fiche
+- [ ] Custom sur un interne (ex. backorder 2) → seul cet interne utilise 2
+- [ ] Commande qui dépasse le stock physique → `backorder_consumed` incrémenté, stock physique à 0
+- [ ] Annulation commande → restauration stock + backorder_consumed
 
 ---
 
@@ -322,6 +446,9 @@ Domaine : `wc-optic` — traduction WPML via String Translation si actif.
 5. **`format_price_range_html()`** conservé en alias déprécié ; aucun appel interne ne produit plus de fourchette.
 6. Thème Flatsome **non présent** dans le workspace local au moment du dev — tests visuels à faire sur l’environnement WAMP réel.
 7. Couleurs du toggle Eyewa sont des **approximations** (#f4f4f5, #111827) — ajuster si charte Alwaleed différente.
+8. **Backorder + menu admin (2026-06-10)** : pas encore de bump version ni entrée `CHANGELOG.md` — à faire avant release (suggéré **1.2.4**).
+9. **Backorder désactivé globalement** : champs Custom masqués en admin produit ; `get_child_backorder_qty()` retourne 0.
+10. **`backorder_consumed`** est conservé à la sauvegarde produit via `preserve_child_backorder_consumed()` — ne pas supprimer le hidden field admin.
 
 ---
 
@@ -333,6 +460,8 @@ Domaine : `wc-optic` — traduction WPML via String Translation si actif.
 - Tests automatisés PHPUnit / E2E.
 - Traductions WPML des nouvelles chaînes.
 - Admin : indication visuelle « variante No power » sur les produits internes.
+- Bump version **1.2.4** + `CHANGELOG.md` pour backorder et menu admin.
+- Commit git.
 
 ---
 
@@ -347,14 +476,18 @@ php -l includes/class-wc-optic-sku.php
 php -l includes/class-wc-optic-cart.php
 php -l includes/class-wc-optic-pricing.php
 php -l includes/class-wc-optic-flatsome.php
+php -l includes/admin/class-wc-optic-admin-menu.php
+php -l includes/admin/class-wc-optic-admin-settings.php
 ```
 
 **Fichiers à lire en premier pour reprendre :**
 
-1. `includes/class-wc-optic-sku.php` — logique enfants, no-power, prix défaut
-2. `includes/class-wc-optic-cart.php` — panier, payload, rendu résumé
-3. `assets/js/frontend.js` — UX fiche produit
-4. `includes/class-wc-optic-flatsome.php` + `assets/css/flatsome-cart-checkout.css` — habillage Flatsome
+1. `includes/class-wc-optic-sku.php` — enfants, no-power, prix défaut, **backorder**
+2. `includes/class-wc-optic-cart.php` — panier, **stock sellable**, commande
+3. `includes/admin/class-wc-optic-admin-menu.php` — menu admin Alwaleed Optics
+4. `includes/admin/class-wc-optic-admin-settings.php` — settings globaux + backorder
+5. `assets/js/frontend.js` — UX fiche produit boutique
+6. `includes/class-wc-optic-flatsome.php` + `assets/css/flatsome-cart-checkout.css` — habillage Flatsome
 
 ---
 
@@ -370,7 +503,12 @@ php -l includes/class-wc-optic-flatsome.php
 | Division sur fiche | **Masquée** (info admin uniquement) |
 | Prix dans formulaire | **Masqué** — prix via thème + sync JS cachée |
 | Toggle No power/Power | Style **pill Eyewa** (réf. eyewa.com) |
+| Backorder | Stock vendable = physique + allowance − consommé − panier |
+| Backorder par interne | **Custom** checkbox ; sinon règle globale Settings |
+| Menu admin | **Alwaleed Optics** top-level (pos. 3), plus sous WooCommerce |
+| Mise à jour handoff | **À chaque prompt** significatif — mettre à jour `SESSION_HANDOFF.md` |
+| Règle Cursor | `.cursor/rules/session-handoff.mdc` (`alwaysApply: true`) — impose la mise à jour du handoff |
 
 ---
 
-*Dernière mise à jour : 2026-06-09 — v1.2.3, qty centrées, alignement labels formulaire.*
+*Dernière mise à jour : 2026-06-10 — backorder, menu Alwaleed Optics, règle Cursor session-handoff.*
