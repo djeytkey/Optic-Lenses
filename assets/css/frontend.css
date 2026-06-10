@@ -175,109 +175,6 @@ select.wc-optic-power-dropdown option.wc-optic-option--rupture,
 	color: #787c82;
 }
 
-.wc-optic-child-selector {
-	margin-top: 0;
-}
-
-.wc-optic-eye-selector-label {
-	display: none;
-}
-
-.wc-optic-child-dropdown,
-.wc-optic-child-selector .select2-container {
-	width: 100% !important;
-}
-
-.wc-optic-child-selector .select2-selection--single {
-	min-height: 38px;
-}
-
-.wc-optic-child-selector .select2-selection__rendered {
-	line-height: 36px !important;
-}
-
-.wc-optic-child-radio-list {
-	display: grid;
-	gap: 0.75rem;
-}
-
-.wc-optic-child-choice {
-	display: flex;
-	gap: 0.75rem;
-	padding: 0.75rem;
-	border: 1px solid #dcdcde;
-	border-radius: 4px;
-	cursor: pointer;
-	align-items: stretch;
-}
-
-.wc-optic-child-choice.is-out-of-stock {
-	opacity: 0.65;
-	cursor: not-allowed;
-}
-
-.wc-optic-child-choice > input[type="radio"] {
-	align-self: center;
-	margin-top: 0;
-}
-
-.wc-optic-child-choice__content {
-	display: flex;
-	flex: 1 1 auto;
-	flex-direction: column;
-	gap: 0.25rem;
-}
-
-.wc-optic-child-choice__powers {
-	font-weight: 600;
-}
-
-.wc-optic-child-choice__powers-list {
-	margin: 0;
-	padding: 0;
-}
-
-.wc-optic-child-choice__power-item {
-	display: flex;
-	flex-direction: row;
-	align-items: baseline;
-	gap: 0.35em;
-	list-style: none;
-	margin: 0 0 0.2rem;
-	direction: ltr;
-	unicode-bidi: isolate;
-}
-
-.wc-optic-child-choice__power-key {
-	font-weight: 600;
-}
-
-.wc-optic-child-choice__power-key::after {
-	content: ":";
-	margin-inline-start: 0.1em;
-}
-
-.wc-optic-child-choice__meta {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.75rem;
-	font-size: 0.95em;
-	color: #50575e;
-}
-
-.wc-optic-child-choice__price {
-	font-weight: 600;
-}
-
-.wc-optic-child-choice__stock {
-	font-weight: 500;
-	color: #2271b1;
-}
-
-.wc-optic-child-choice__stock.is-out-of-stock {
-	color: #b32d2e;
-}
-
 .wc-optic-no-terms {
 	display: block;
 	color: #b32d2e;
@@ -546,20 +443,6 @@ html[dir="rtl"] .wc-optic-line-summary__power-item,
 	width: 100%;
 }
 
-html[dir="rtl"] .wc-optic-child-choice__powers-list,
-[dir="rtl"] .wc-optic-child-choice__powers-list {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-	width: 100%;
-}
-
-html[dir="rtl"] .wc-optic-child-choice__power-item,
-[dir="rtl"] .wc-optic-child-choice__power-item {
-	justify-content: flex-end;
-	width: 100%;
-}
-
 .wc-optic-cart-eye-prices {
 	display: grid;
 	gap: 0.25rem;
@@ -625,8 +508,7 @@ html[dir="rtl"] .wc-optic-child-choice__power-item,
 		max-width: 120px;
 	}
 
-	.wc-optic-eye-title,
-	.wc-optic-eye-selector-label {
+	.wc-optic-eye-title {
 		display: block;
 	}
 
@@ -637,15 +519,6 @@ html[dir="rtl"] .wc-optic-child-choice__power-item,
 	.wc-optic-line-summary--same-power .wc-optic-line-summary__eyes {
 		max-width: none;
 	}
-}
-
-.wc-optic-child-choice__powers-list {
-	margin: 0;
-}
-
-li.wc-optic-child-choice__power-item {
-    list-style: none;
-    font-weight: 400;
 }
 
 .wc-optic-toggle.wc-optic-toggle--question input {

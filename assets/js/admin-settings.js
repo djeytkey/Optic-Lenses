@@ -303,16 +303,23 @@
 
 	$( function () {
 		var $enabled = $( '#wc_optic_global_backorder_enabled' );
+		var $panel = $( '#wc-optic-global-backorder-panel' );
 		var $qtyWrap = $( '.wc-optic-global-backorder-qty-wrap' );
 
-		function syncGlobalBackorderQtyVisibility() {
-			if ( ! $enabled.length || ! $qtyWrap.length ) {
+		function syncGlobalBackorderPanel() {
+			if ( ! $enabled.length ) {
 				return;
 			}
-			$qtyWrap.toggleClass( 'wc-optic-is-hidden', ! $enabled.is( ':checked' ) );
+			var isOn = $enabled.is( ':checked' );
+			if ( $panel.length ) {
+				$panel.toggleClass( 'wc-optic-backorder-panel--enabled', isOn );
+			}
+			if ( $qtyWrap.length ) {
+				$qtyWrap.toggleClass( 'wc-optic-is-hidden', ! isOn );
+			}
 		}
 
-		syncGlobalBackorderQtyVisibility();
-		$enabled.on( 'change', syncGlobalBackorderQtyVisibility );
+		syncGlobalBackorderPanel();
+		$enabled.on( 'change', syncGlobalBackorderPanel );
 	} );
 }( jQuery ) );

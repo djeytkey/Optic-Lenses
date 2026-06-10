@@ -240,30 +240,41 @@
 		var enabled = !!( wcOpticAdmin && wcOpticAdmin.backorderEnabled );
 		var $row = $block.find( '.wc-optic-child-backorder-row' );
 		var $display = $block.find( '.wc-optic-child-backorder-display' );
+		var $source = $block.find( '.wc-optic-child-backorder-card__source' );
 		var $custom = $block.find( '.wc-optic-child-backorder-custom' );
 		var $qty = $block.find( '.wc-optic-child-backorder-qty' );
+		var $customField = $block.find( '.wc-optic-child-backorder-custom-field' );
 		var isCustom = $custom.is( ':checked' );
+		var globalLabel = ( wcOpticAdmin.i18n && wcOpticAdmin.i18n.backorderGlobal ) || 'Global';
+		var customLabel = ( wcOpticAdmin.i18n && wcOpticAdmin.i18n.backorderCustom ) || 'Custom';
 
 		if ( ! $row.length ) {
 			return;
 		}
 
 		$row.toggleClass( 'wc-optic-backorder-disabled', ! enabled );
+		$row.toggleClass( 'wc-optic-child-backorder-card--custom', enabled && isCustom );
 
 		if ( ! enabled ) {
-			$display.val( '0' );
+			$display.text( '0' );
+			$source.text( globalLabel );
 			$qty.prop( 'disabled', true );
+			$customField.addClass( 'wc-optic-is-hidden' );
 			return;
 		}
 
 		if ( isCustom ) {
 			$qty.prop( 'disabled', false );
-			$display.val( $qty.val() || '0' );
+			$display.text( $qty.val() || '0' );
+			$source.text( customLabel );
+			$customField.removeClass( 'wc-optic-is-hidden' );
 			return;
 		}
 
 		$qty.prop( 'disabled', true );
-		$display.val( String( getGlobalBackorderQty() ) );
+		$display.text( String( getGlobalBackorderQty() ) );
+		$source.text( globalLabel );
+		$customField.addClass( 'wc-optic-is-hidden' );
 	}
 
 	function syncAllChildBackorderFields() {

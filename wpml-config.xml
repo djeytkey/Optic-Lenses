@@ -1,12 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <wpml-config>
-	<admin-texts>
-		<key name="wc_optic_selector_ui"/>
-	</admin-texts>
 	<custom-fields>
 		<custom-field action="copy">_optic_division</custom-field>
 		<custom-field action="copy">_optic_default_qty_per_eye</custom-field>
-		<custom-field action="copy">_optic_selector_ui</custom-field>
 		<custom-field action="copy-once">_optic_child_configs</custom-field>
 		<custom-field action="copy">_optic_cat_section</custom-field>
 		<custom-field action="copy">_optic_cat_company</custom-field>

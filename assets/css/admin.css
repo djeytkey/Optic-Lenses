@@ -291,26 +291,277 @@
 	display: none !important;
 }
 
-#optic_product_data_panel .wc-optic-child-backorder-controls {
-	display: inline-flex;
-	align-items: center;
-	flex-wrap: wrap;
-	gap: 0.5em 0.75em;
+/* —— Backorder (settings + product) —— */
+.wc-optic-backorder-panel {
+	margin: 1.25em 0 0;
+	padding: 1em 1.15em 1.15em;
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	background: #f9fafb;
+	transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
-#optic_product_data_panel .wc-optic-child-backorder-custom-label {
+.wc-optic-backorder-panel--enabled {
+	border-color: #c3d9f7;
+	background: #f6f9ff;
+}
+
+.wc-optic-backorder-panel__header {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.65rem;
+	margin-bottom: 0.85rem;
+}
+
+.wc-optic-backorder-panel__icon {
+	flex: 0 0 auto;
+	width: 28px;
+	height: 28px;
+	margin-top: 0.1rem;
+	font-size: 28px;
+	color: #2271b1;
+}
+
+.wc-optic-backorder-panel__titles {
+	min-width: 0;
+}
+
+.wc-optic-backorder-panel__title {
+	margin: 0 0 0.2rem;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.35;
+	color: #1d2327;
+}
+
+.wc-optic-backorder-panel__toggle-row {
+	margin-bottom: 0.85rem;
+}
+
+.wc-optic-backorder-panel__details {
+	padding-top: 0.85rem;
+	border-top: 1px solid #e2e4e7;
+}
+
+.wc-optic-backorder-panel__qty-label {
+	display: block;
+	margin: 0 0 0.45rem;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.wc-optic-backorder-panel__qty-row {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+.wc-optic-backorder-panel__qty-suffix {
+	font-size: 13px;
+	color: #646970;
+}
+
+.wc-optic-backorder-panel__example {
+	margin: 0.55rem 0 0;
+}
+
+.wc-optic-backorder-toggle {
 	display: inline-flex;
 	align-items: center;
+	gap: 0.55rem;
 	margin: 0;
-	font-weight: 400;
+	cursor: pointer;
+	user-select: none;
 }
 
-#optic_product_data_panel .wc-optic-child-backorder-row.wc-optic-backorder-disabled .wc-optic-child-backorder-custom-label,
-#optic_product_data_panel .wc-optic-child-backorder-row.wc-optic-backorder-disabled .wc-optic-child-backorder-qty {
+.wc-optic-backorder-toggle__input {
+	position: absolute;
+	opacity: 0;
+	width: 1px;
+	height: 1px;
+	pointer-events: none;
+}
+
+.wc-optic-backorder-toggle__switch {
+	position: relative;
+	flex: 0 0 38px;
+	width: 38px;
+	height: 22px;
+	border-radius: 999px;
+	background: #c3c4c7;
+	transition: background-color 0.2s ease;
+}
+
+.wc-optic-backorder-toggle__switch::after {
+	content: "";
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+	transition: transform 0.2s ease;
+}
+
+.wc-optic-backorder-toggle__input:checked + .wc-optic-backorder-toggle__switch {
+	background: #2271b1;
+}
+
+.wc-optic-backorder-toggle__input:checked + .wc-optic-backorder-toggle__switch::after {
+	transform: translateX(16px);
+}
+
+.wc-optic-backorder-toggle__input:focus-visible + .wc-optic-backorder-toggle__switch {
+	outline: 2px solid #2271b1;
+	outline-offset: 2px;
+}
+
+.wc-optic-backorder-toggle__text {
+	font-size: 13px;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.wc-optic-backorder-input {
+	width: 88px;
+	min-height: 34px;
+	margin: 0;
+	padding: 4px 10px;
+	border: 1px solid #8c8f94;
+	border-radius: 6px;
+	background: #fff;
+	font-size: 14px;
+	font-weight: 600;
+	line-height: 1.4;
+	text-align: center;
+}
+
+.wc-optic-backorder-input:disabled {
+	background: #f0f0f1;
+	color: #646970;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-card {
+	margin: 0.35rem 0 0.85rem;
+	padding: 0.85rem 0.95rem;
+	border: 1px solid #e2e4e7;
+	border-radius: 8px;
+	background: #f9fafb;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-card--custom {
+	border-color: #c3d9f7;
+	background: #f6f9ff;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-card.wc-optic-backorder-disabled {
+	opacity: 0.72;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-card__header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	margin-bottom: 0.7rem;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-card__title {
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.03em;
+	text-transform: uppercase;
+	color: #50575e;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-card__source {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.15rem 0.55rem;
+	border-radius: 999px;
+	background: #e8edf3;
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1.5;
+	color: #3c434a;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-card--custom .wc-optic-child-backorder-card__source {
+	background: #dbeafe;
+	color: #1d4f91;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-card__body {
+	display: grid;
+	grid-template-columns: minmax(0, 120px) minmax(0, 1fr);
+	gap: 0.85rem 1rem;
+	align-items: center;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-effective {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-height: 72px;
+	padding: 0.55rem 0.4rem;
+	border: 1px dashed #c3c4c7;
+	border-radius: 8px;
+	background: #fff;
+	text-align: center;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-effective__value {
+	font-size: 28px;
+	font-weight: 700;
+	line-height: 1;
+	color: #2271b1;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-effective__label {
+	margin-top: 0.2rem;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	color: #646970;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-card__actions {
+	display: flex;
+	flex-direction: column;
+	gap: 0.65rem;
+	min-width: 0;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-custom-field {
+	display: flex;
+	align-items: center;
+	gap: 0.45rem;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-custom-field__suffix {
+	font-size: 13px;
+	color: #646970;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-card__notice {
+	margin: 0.65rem 0 0;
+	padding: 0.45rem 0.6rem;
+	border-radius: 6px;
+	background: #fff;
+	border-left: 3px solid #dba617;
+	font-size: 12px;
+}
+
+#optic_product_data_panel .wc-optic-child-backorder-card.wc-optic-backorder-disabled .wc-optic-child-backorder-card__actions {
 	display: none;
 }
 
-#optic_product_data_panel .wc-optic-child-backorder-consumed-note {
-	display: block;
-	margin-top: 0.35em;
+@media (max-width: 782px) {
+	#optic_product_data_panel .wc-optic-child-backorder-card__body {
+		grid-template-columns: 1fr;
+	}
 }

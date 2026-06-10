@@ -161,29 +161,49 @@ class WC_Optic_Admin_Settings {
 		echo '<div class="notice inline wc-optic-global-settings-box">';
 		echo '<p><strong>' . esc_html__( 'Global storefront settings', 'wc-optic' ) . '</strong></p>';
 		echo '<p class="description">' . esc_html__( 'These settings affect all optic products in the shop.', 'wc-optic' ) . '</p>';
-		echo '<p class="form-field">';
-		echo '<label for="wc_optic_global_selector_ui"><strong>' . esc_html__( 'Child selector UI', 'wc-optic' ) . '</strong></label><br />';
-		echo '<select name="wc_optic_global_selector_ui" id="wc_optic_global_selector_ui">';
-		foreach ( WC_Optic_SKU::get_selector_ui_options() as $value => $label ) {
-			echo '<option value="' . esc_attr( $value ) . '" ' . selected( WC_Optic_SKU::get_selector_ui(), $value, false ) . '>' . esc_html( $label ) . '</option>';
-		}
-		echo '</select>';
-		echo '</p>';
-
 		$backorder_enabled = WC_Optic_SKU::is_backorder_enabled();
-		echo '<p class="form-field wc-optic-global-backorder-field">';
-		echo '<label for="wc_optic_global_backorder_enabled">';
-		echo '<input type="checkbox" name="wc_optic_global_backorder_enabled" id="wc_optic_global_backorder_enabled" value="1" ' . checked( $backorder_enabled, true, false ) . ' />';
-		echo ' <strong>' . esc_html__( 'Allow backorder', 'wc-optic' ) . '</strong>';
-		echo '</label>';
-		echo '<span class="description">' . esc_html__( 'When enabled, customers can purchase beyond physical stock up to the backorder allowance.', 'wc-optic' ) . '</span>';
-		echo '</p>';
+		$backorder_qty     = WC_Optic_SKU::get_global_backorder_qty();
+		$panel_class       = 'wc-optic-backorder-panel';
+		if ( $backorder_enabled ) {
+			$panel_class .= ' wc-optic-backorder-panel--enabled';
+		}
 
-		echo '<p class="form-field wc-optic-global-backorder-qty-wrap' . ( $backorder_enabled ? '' : ' wc-optic-is-hidden' ) . '">';
-		echo '<label for="wc_optic_global_backorder_qty"><strong>' . esc_html__( 'Backorder quantity', 'wc-optic' ) . '</strong></label><br />';
-		echo '<input type="number" name="wc_optic_global_backorder_qty" id="wc_optic_global_backorder_qty" class="small-text" min="0" step="1" value="' . esc_attr( (string) WC_Optic_SKU::get_global_backorder_qty() ) . '" />';
-		echo '<span class="description">' . esc_html__( 'Extra units sellable beyond each internal product stock (e.g. stock 5 + backorder 5 = max 10).', 'wc-optic' ) . '</span>';
+		echo '<div class="' . esc_attr( $panel_class ) . '" id="wc-optic-global-backorder-panel">';
+		echo '<div class="wc-optic-backorder-panel__header">';
+		echo '<span class="dashicons dashicons-backup wc-optic-backorder-panel__icon" aria-hidden="true"></span>';
+		echo '<div class="wc-optic-backorder-panel__titles">';
+		echo '<h3 class="wc-optic-backorder-panel__title">' . esc_html__( 'Backorder', 'wc-optic' ) . '</h3>';
+		echo '<p class="description">' . esc_html__( 'Allow customers to purchase beyond physical stock up to a configurable allowance.', 'wc-optic' ) . '</p>';
+		echo '</div>';
+		echo '</div>';
+
+		echo '<div class="wc-optic-backorder-panel__toggle-row">';
+		echo '<label class="wc-optic-backorder-toggle" for="wc_optic_global_backorder_enabled">';
+		echo '<input type="checkbox" name="wc_optic_global_backorder_enabled" id="wc_optic_global_backorder_enabled" class="wc-optic-backorder-toggle__input" value="1" ' . checked( $backorder_enabled, true, false ) . ' />';
+		echo '<span class="wc-optic-backorder-toggle__switch" aria-hidden="true"></span>';
+		echo '<span class="wc-optic-backorder-toggle__text">' . esc_html__( 'Enable backorder', 'wc-optic' ) . '</span>';
+		echo '</label>';
+		echo '</div>';
+
+		echo '<div class="wc-optic-backorder-panel__details wc-optic-global-backorder-qty-wrap' . ( $backorder_enabled ? '' : ' wc-optic-is-hidden' ) . '">';
+		echo '<label class="wc-optic-backorder-panel__qty-label" for="wc_optic_global_backorder_qty">' . esc_html__( 'Extra units per internal product', 'wc-optic' ) . '</label>';
+		echo '<div class="wc-optic-backorder-panel__qty-row">';
+		echo '<input type="number" name="wc_optic_global_backorder_qty" id="wc_optic_global_backorder_qty" class="wc-optic-backorder-input" min="0" step="1" value="' . esc_attr( (string) $backorder_qty ) . '" />';
+		echo '<span class="wc-optic-backorder-panel__qty-suffix">' . esc_html__( 'units', 'wc-optic' ) . '</span>';
+		echo '</div>';
+		echo '<p class="wc-optic-backorder-panel__example description">';
+		echo esc_html(
+			sprintf(
+				/* translators: 1: stock example, 2: backorder example, 3: total example */
+				__( 'Example: stock %1$d + backorder %2$d = %3$d units sellable.', 'wc-optic' ),
+				5,
+				max( 1, $backorder_qty ),
+				5 + max( 1, $backorder_qty )
+			)
+		);
 		echo '</p>';
+		echo '</div>';
+		echo '</div>';
 
 		echo '<p><button type="submit" class="button button-secondary">' . esc_html__( 'Save global settings', 'wc-optic' ) . '</button></p>';
 		echo '</div>';
@@ -686,7 +706,6 @@ class WC_Optic_Admin_Settings {
 			return;
 		}
 
-		$selector_ui       = isset( $_POST['wc_optic_global_selector_ui'] ) ? WC_Optic_SKU::set_selector_ui( wp_unslash( $_POST['wc_optic_global_selector_ui'] ) ) : WC_Optic_SKU::get_selector_ui();
 		$backorder_enabled = WC_Optic_SKU::set_backorder_enabled( isset( $_POST['wc_optic_global_backorder_enabled'] ) ? wp_unslash( $_POST['wc_optic_global_backorder_enabled'] ) : '' );
 		$backorder_qty     = $backorder_enabled && isset( $_POST['wc_optic_global_backorder_qty'] )
 			? WC_Optic_SKU::set_global_backorder_qty( wp_unslash( $_POST['wc_optic_global_backorder_qty'] ) )
@@ -694,15 +713,9 @@ class WC_Optic_Admin_Settings {
 
 		add_action(
 			'admin_notices',
-			function () use ( $selector_ui, $backorder_enabled, $backorder_qty ) {
+			function () use ( $backorder_enabled, $backorder_qty ) {
 				echo '<div class="notice notice-success is-dismissible"><p>';
-				echo esc_html(
-					sprintf(
-						/* translators: %s: selector mode */
-						__( 'Global optic selector UI saved: %s.', 'wc-optic' ),
-						$selector_ui
-					)
-				);
+				echo esc_html__( 'Global optic settings saved.', 'wc-optic' );
 				if ( $backorder_enabled ) {
 					echo ' ';
 					echo esc_html(

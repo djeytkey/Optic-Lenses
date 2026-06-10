@@ -302,7 +302,6 @@ class WC_Optic_WPML {
 			'_optic_child_configs'       => __( 'Optic internal products (JSON)', 'wc-optic' ),
 			'_optic_division'            => __( 'Optical division', 'wc-optic' ),
 			'_optic_default_qty_per_eye' => __( 'Quantity per eye default', 'wc-optic' ),
-			'_optic_selector_ui'         => __( 'Child selector UI', 'wc-optic' ),
 		);
 
 		return isset( $map[ $label ] ) ? $map[ $label ] : $label;

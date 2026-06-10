@@ -17,6 +17,9 @@ Ce document résume tout le travail réalisé sur le plugin (sessions Cursor cum
 
 1. **Backorder** — paramétrage global (Settings) + override par produit interne ; stock vendable = stock physique + allowance backorder − consommé − panier.
 2. **Menu admin WordPress** — menu principal **Alwaleed Optics** (sous Dashboard) ; migration **Settings** et **Import** hors du menu WooCommerce.
+3. **Suppression Child selector UI** — option globale radio/dropdown retirée ; le client choisit les puissances via les sélecteurs en cascade (`render_power_selectors`).
+4. **Règle Cursor** — `.cursor/rules/session-handoff.mdc` pour mise à jour automatique du handoff.
+5. **UI backorder admin** — panneau Settings + carte produit interne (toggle pill, badge Global/Custom, styles `admin.css`).
 
 ### Session 2026-06-09 (précédente)
 
@@ -244,6 +247,26 @@ Enregistrement : `WC_Optic_Admin_Menu::hooks()` dans `class-wc-optic-plugin.php`
 
 ---
 
+### 2.9 Suppression Child selector UI (session 2026-06-10)
+
+**Contexte :** l’ancien réglage global **Child selector UI** (radio vs dropdown pour choisir un produit interne d’un bloc) n’est plus pertinent : la boutique utilise uniquement les **sélecteurs de puissance en cascade** par œil (`WC_Optic_Frontend::render_power_selectors()` + résolution JS via `wcOpticFront.matrix`).
+
+**Retiré :**
+
+| Élément | Détail |
+|---------|--------|
+| Settings admin | Champ `<select>` Child selector UI |
+| Options WP | `wc_optic_selector_ui` (orpheline, plus lue) |
+| Méta produit | `_optic_selector_ui` — supprimée à la sauvegarde via `persist_child_data()` |
+| PHP | `get_selector_ui_options()`, `get_selector_ui()`, `set_selector_ui()`, constantes associées |
+| Code mort | `render_child_stock_badge()`, `render_child_choice_powers()` dans `class-wc-optic-frontend.php` |
+| CSS | `.wc-optic-child-selector`, `.wc-optic-child-choice*` dans `frontend.css` |
+| WPML | Entrées `wc_optic_selector_ui` et `_optic_selector_ui` dans `wpml-config.xml` / `class-wc-optic-wpml.php` |
+
+**Conservé :** sélection par puissances (SPH, CYL, etc.) — inchangée.
+
+---
+
 ## 3. Architecture & fichiers modifiés
 
 ### PHP — includes
@@ -251,14 +274,14 @@ Enregistrement : `WC_Optic_Admin_Menu::hooks()` dans `class-wc-optic-plugin.php`
 | Fichier | Rôle |
 |---------|------|
 | `admin/class-wc-optic-admin-menu.php` | **Nouveau (2026-06-10)** — menu principal Alwaleed Optics |
-| `admin/class-wc-optic-admin-settings.php` | Settings globaux + backorder ; plus de sous-menu WooCommerce |
+| `admin/class-wc-optic-admin-settings.php` | Settings globaux (backorder) ; plus de Child selector UI |
 | `admin/class-wc-optic-admin-import.php` | Import catalogue ; hook screen sous menu Alwaleed Optics |
 | `admin/class-wc-optic-admin-product.php` | Champs backorder par produit interne |
 | `class-wc-optic-catalog.php` | `sph_term_is_zero_power()`, `sph_value_is_zero_power()` |
 | `class-wc-optic-sku.php` | No-power, prix défaut, **backorder**, matrice storefront, `persist_child_data` |
 | `class-wc-optic-pricing.php` | `format_display_price_html()`, filtre `get_price_html` |
 | `class-wc-optic-cart.php` | Panier, **stock sellable/backorder**, `apply_child_stock_delta` |
-| `class-wc-optic-frontend.php` | Stock HTML, `product_is_in_stock()` via remaining |
+| `class-wc-optic-frontend.php` | Puissance en cascade, stock HTML ; code child-choice retiré |
 | `class-wc-optic-flatsome.php` | Détection Flatsome + assets panier/checkout |
 | `class-wc-optic-plugin.php` | `WC_Optic_Admin_Menu::hooks()`, Flatsome, etc. |
 | `class-wc-optic-autoload.php` | Map classes admin + Flatsome |
@@ -362,7 +385,7 @@ S’assurer qu’une entrée **+0.00** existe et est reconnaissable (`name`, `sl
 
 ### Navigation admin
 
-- **Alwaleed Optics → Settings** — catalogue, divisions, paramètres globaux (selector UI, backorder).
+- **Alwaleed Optics → Settings** — catalogue, divisions, paramètres globaux (backorder).
 - **Alwaleed Optics → Import** — import Excel/CSV par onglet catalogue.
 
 ---
@@ -506,9 +529,10 @@ php -l includes/admin/class-wc-optic-admin-settings.php
 | Backorder | Stock vendable = physique + allowance − consommé − panier |
 | Backorder par interne | **Custom** checkbox ; sinon règle globale Settings |
 | Menu admin | **Alwaleed Optics** top-level (pos. 3), plus sous WooCommerce |
+| Child selector UI | **Supprimé** — sélection par puissances en cascade uniquement |
 | Mise à jour handoff | **À chaque prompt** significatif — mettre à jour `SESSION_HANDOFF.md` |
 | Règle Cursor | `.cursor/rules/session-handoff.mdc` (`alwaysApply: true`) — impose la mise à jour du handoff |
 
 ---
 
-*Dernière mise à jour : 2026-06-10 — backorder, menu Alwaleed Optics, règle Cursor session-handoff.*
+*Dernière mise à jour : 2026-06-10 — restylage UI backorder admin (Settings + fiche produit).*

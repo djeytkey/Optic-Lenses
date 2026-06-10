@@ -253,6 +253,7 @@ class WC_Optic_Admin_Product {
 					'product'          => __( 'Product', 'wc-optic' ),
 					'remove'           => __( 'Remove', 'wc-optic' ),
 					'backorderAllowed' => __( 'Backorder allowed', 'wc-optic' ),
+					'backorderGlobal'  => __( 'Global', 'wc-optic' ),
 					'backorderCustom'  => __( 'Custom', 'wc-optic' ),
 					'backorderDisabled'=> __( 'Backorder is disabled in global settings.', 'wc-optic' ),
 				),
@@ -267,28 +268,57 @@ class WC_Optic_Admin_Product {
 	 * @param string $index_token Field index token.
 	 */
 	protected static function render_child_backorder_fields( array $config, $index_token ) {
-		$backorder_custom = ! empty( $config['backorder_custom'] );
-		$custom_qty       = isset( $config['backorder_qty'] ) && '' !== trim( (string) $config['backorder_qty'] )
+		$backorder_custom  = ! empty( $config['backorder_custom'] );
+		$backorder_enabled = WC_Optic_SKU::is_backorder_enabled();
+		$custom_qty        = isset( $config['backorder_qty'] ) && '' !== trim( (string) $config['backorder_qty'] )
 			? (string) absint( $config['backorder_qty'] )
 			: (string) WC_Optic_SKU::get_global_backorder_qty();
-		$display_qty      = $backorder_custom
+		$display_qty       = $backorder_custom
 			? $custom_qty
-			: ( WC_Optic_SKU::is_backorder_enabled() ? (string) WC_Optic_SKU::get_global_backorder_qty() : '0' );
-		$consumed         = WC_Optic_SKU::get_child_backorder_consumed( $config );
-		$pf               = '_optic_child_configs[' . $index_token . ']';
+			: ( $backorder_enabled ? (string) WC_Optic_SKU::get_global_backorder_qty() : '0' );
+		$consumed          = WC_Optic_SKU::get_child_backorder_consumed( $config );
+		$pf                = '_optic_child_configs[' . $index_token . ']';
+		$row_class         = 'wc-optic-child-backorder-card wc-optic-child-backorder-row';
+		if ( ! $backorder_enabled ) {
+			$row_class .= ' wc-optic-backorder-disabled';
+		}
+		if ( $backorder_custom ) {
+			$row_class .= ' wc-optic-child-backorder-card--custom';
+		}
 
-		echo '<p class="form-field form-field-wide wc-optic-child-backorder-row">';
-		echo '<label>' . esc_html__( 'Backorder allowed', 'wc-optic' ) . '</label>';
-		echo '<span class="wc-optic-child-backorder-controls">';
-		echo '<input type="number" class="wc-optic-child-backorder-display small-text" value="' . esc_attr( $display_qty ) . '" disabled="disabled" min="0" step="1" />';
-		echo '<label class="wc-optic-child-backorder-custom-label">';
-		echo '<input type="checkbox" class="wc-optic-child-backorder-custom" name="' . esc_attr( $pf ) . '[backorder_custom]" value="1" ' . checked( $backorder_custom, true, false ) . ' />';
-		echo ' ' . esc_html__( 'Custom', 'wc-optic' );
-		echo '</label>';
-		echo '<input type="number" class="wc-optic-child-backorder-qty small-text" name="' . esc_attr( $pf ) . '[backorder_qty]" value="' . esc_attr( $custom_qty ) . '" min="0" step="1" ' . disabled( ! $backorder_custom, true, false ) . ' />';
+		echo '<div class="' . esc_attr( $row_class ) . '">';
+		echo '<div class="wc-optic-child-backorder-card__header">';
+		echo '<span class="wc-optic-child-backorder-card__title">' . esc_html__( 'Backorder allowance', 'wc-optic' ) . '</span>';
+		echo '<span class="wc-optic-child-backorder-card__source">';
+		echo esc_html( $backorder_custom ? __( 'Custom', 'wc-optic' ) : __( 'Global', 'wc-optic' ) );
 		echo '</span>';
-		if ( $consumed > 0 ) {
-			echo '<span class="description wc-optic-child-backorder-consumed-note">';
+		echo '</div>';
+
+		echo '<div class="wc-optic-child-backorder-card__body">';
+		echo '<div class="wc-optic-child-backorder-effective">';
+		echo '<span class="wc-optic-child-backorder-display wc-optic-child-backorder-effective__value">' . esc_html( $display_qty ) . '</span>';
+		echo '<span class="wc-optic-child-backorder-effective__label">' . esc_html__( 'extra units', 'wc-optic' ) . '</span>';
+		echo '</div>';
+
+		echo '<div class="wc-optic-child-backorder-card__actions">';
+		echo '<label class="wc-optic-backorder-toggle wc-optic-child-backorder-custom-label">';
+		echo '<input type="checkbox" class="wc-optic-child-backorder-custom wc-optic-backorder-toggle__input" name="' . esc_attr( $pf ) . '[backorder_custom]" value="1" ' . checked( $backorder_custom, true, false ) . ' />';
+		echo '<span class="wc-optic-backorder-toggle__switch" aria-hidden="true"></span>';
+		echo '<span class="wc-optic-backorder-toggle__text">' . esc_html__( 'Custom allowance', 'wc-optic' ) . '</span>';
+		echo '</label>';
+
+		echo '<div class="wc-optic-child-backorder-custom-field">';
+		echo '<label class="screen-reader-text" for="wc_optic_child_' . esc_attr( $index_token ) . '_backorder_qty">' . esc_html__( 'Custom backorder quantity', 'wc-optic' ) . '</label>';
+		echo '<input type="number" class="wc-optic-child-backorder-qty wc-optic-backorder-input" id="wc_optic_child_' . esc_attr( $index_token ) . '_backorder_qty" name="' . esc_attr( $pf ) . '[backorder_qty]" value="' . esc_attr( $custom_qty ) . '" min="0" step="1" ' . disabled( ! $backorder_custom, true, false ) . ' />';
+		echo '<span class="wc-optic-child-backorder-custom-field__suffix">' . esc_html__( 'units', 'wc-optic' ) . '</span>';
+		echo '</div>';
+		echo '</div>';
+		echo '</div>';
+
+		if ( ! $backorder_enabled ) {
+			echo '<p class="wc-optic-child-backorder-card__notice description">' . esc_html__( 'Backorder is disabled in global settings.', 'wc-optic' ) . '</p>';
+		} elseif ( $consumed > 0 ) {
+			echo '<p class="wc-optic-child-backorder-card__notice wc-optic-child-backorder-consumed-note">';
 			echo esc_html(
 				sprintf(
 					/* translators: %d: consumed backorder units */
@@ -296,10 +326,11 @@ class WC_Optic_Admin_Product {
 					$consumed
 				)
 			);
-			echo '</span>';
+			echo '</p>';
 		}
+
 		echo '<input type="hidden" name="' . esc_attr( $pf ) . '[backorder_consumed]" value="' . esc_attr( (string) $consumed ) . '" class="wc-optic-child-backorder-consumed" />';
-		echo '</p>';
+		echo '</div>';
 	}
 
 	/**

@@ -27,8 +27,6 @@ class WC_Optic_SKU {
 	);
 
 	const CHILD_META_KEY = '_optic_child_configs';
-	const SELECTOR_META_KEY = '_optic_selector_ui';
-	const GLOBAL_SELECTOR_OPTION           = 'wc_optic_selector_ui';
 	const GLOBAL_BACKORDER_ENABLED_OPTION  = 'wc_optic_backorder_enabled';
 	const GLOBAL_BACKORDER_QTY_OPTION      = 'wc_optic_backorder_qty';
 	const MAX_LEGACY_SYNTHETIC_CHILDREN    = 200;
@@ -87,48 +85,6 @@ class WC_Optic_SKU {
 	public static function normalize_catalog_id( $raw ) {
 		$ids = self::normalize_catalog_ids( $raw );
 		return empty( $ids ) ? 0 : (int) reset( $ids );
-	}
-
-	/**
-	 * Child selector UI options.
-	 *
-	 * @return array<string, string>
-	 */
-	public static function get_selector_ui_options() {
-		return array(
-			'radio'    => __( 'Radio buttons', 'wc-optic' ),
-			'dropdown' => __( 'Dropdown', 'wc-optic' ),
-		);
-	}
-
-	/**
-	 * Get saved selector UI.
-	 *
-	 * @param WC_Product $product Product.
-	 * @return string
-	 */
-	public static function get_selector_ui( ?WC_Product $product = null ) {
-		$value = (string) get_option( self::GLOBAL_SELECTOR_OPTION, 'dropdown' );
-		if ( ! isset( self::get_selector_ui_options()[ $value ] ) ) {
-			return 'dropdown';
-		}
-		return $value;
-	}
-
-	/**
-	 * Persist global selector UI option.
-	 *
-	 * @param string $value Selector mode.
-	 * @return string
-	 */
-	public static function set_selector_ui( $value ) {
-		$value = sanitize_key( (string) $value );
-		if ( ! isset( self::get_selector_ui_options()[ $value ] ) ) {
-			$value = 'dropdown';
-		}
-
-		update_option( self::GLOBAL_SELECTOR_OPTION, $value, false );
-		return $value;
 	}
 
 	/**
@@ -1163,15 +1119,14 @@ class WC_Optic_SKU {
 	}
 
 	/**
-	 * Persist child configs, selector UI, derived indexes, and a minimal parent price.
+	 * Persist child configs, derived indexes, and a minimal parent price.
 	 *
 	 * @param WC_Product $product       Product.
 	 * @param array      $child_configs Normalized child configs.
-	 * @param string     $selector_ui   Selector UI.
 	 */
-	public static function persist_child_data( WC_Product $product, array $child_configs, $selector_ui = 'dropdown' ) {
+	public static function persist_child_data( WC_Product $product, array $child_configs ) {
 		$product->update_meta_data( self::CHILD_META_KEY, array_values( $child_configs ) );
-		$product->delete_meta_data( self::SELECTOR_META_KEY );
+		$product->delete_meta_data( '_optic_selector_ui' );
 
 		$index = self::build_catalog_index_from_children( $child_configs );
 		foreach ( self::INDEX_META_KEYS as $type => $meta_key ) {
