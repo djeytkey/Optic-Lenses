@@ -4,6 +4,13 @@ Toutes les modifications notables de **Alwaleed Optics Products** sont document�
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.2.3] — 2026-06-09
+
+### Modifié
+
+- Champs quantité fiche produit (`#wc_optic_qty`, `#wc_optic_qty_left`, `#wc_optic_qty_right`) : texte centré.
+- Retrait du `padding-top` sur `.wc-optic-config-table__label` (alignement grille formulaire).
+
 ## [1.2.2] — 2026-06-09
 
 ### Modifié

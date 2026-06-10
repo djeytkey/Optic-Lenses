@@ -41,9 +41,9 @@
 	align-items: start;
 }
 
-.wc-optic-config-table__label {
+/* .wc-optic-config-table__label {
 	padding-top: 0.35rem;
-}
+} */
 
 .wc-optic-eyes--stack {
 	display: grid;
@@ -650,4 +650,8 @@ li.wc-optic-child-choice__power-item {
 
 .wc-optic-toggle.wc-optic-toggle--question input {
     margin-bottom: 0;
+}
+
+#wc_optic_qty_left, #wc_optic_qty_right, #wc_optic_qty {
+    text-align: center;
 }

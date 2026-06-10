@@ -2,7 +2,7 @@
 
 **Date :** 2026-06-09  
 **Plugin :** `wp-content/plugins/Optic-Lenses`  
-**Version déclarée :** 1.2.2 (`woocommerce-optic-product.php`)  
+**Version déclarée :** 1.2.3 (`woocommerce-optic-product.php`)  
 **Thème cible boutique :** Flatsome (parent ou enfant)
 
 Ce document résume tout le travail réalisé pendant cette session Cursor, pour permettre à un autre développeur (ou une future session IA) de reprendre sans perte de contexte.
@@ -18,7 +18,7 @@ Cette session a porté sur **l’expérience boutique client** pour les produits
 3. **Panier / checkout** — total par section œil + habillage **Flatsome moderne**.
 4. **Règles métier affinées** — « sans puissance » = SPH **+0.00** ; autres divisions = **prix le plus bas**.
 5. **UI fiche produit** — toggle No power/Power style **Eyewa** (pill) ; division et bloc prix formulaire **masqués** (v1.2.0).
-6. **Version** — bump **1.2.2** + `CHANGELOG.md`.
+6. **Version** — bump **1.2.3** ; à chaque bump : mettre à jour **`CHANGELOG.md`** et **`SESSION_HANDOFF.md`** (convention session).
 
 Aucun commit git n’a été demandé ni créé pendant la session.
 
@@ -71,6 +71,17 @@ Ce n’est **pas** un SPH vide. Un produit interne est « no power » si son ter
 | `.wc-optic-pricing` visible | **Supprimé** — bloc conservé en `hidden` pour sync JS vers le prix WooCommerce/Flatsome (`.summary > .price`). |
 
 Le client voit le prix uniquement via le bloc prix standard du thème ; le formulaire optique ne duplique plus prix ni division.
+
+---
+
+### 2.6 Fiche produit — ajustements CSS (v1.2.3)
+
+| Élément | Changement |
+|---------|------------|
+| `#wc_optic_qty`, `#wc_optic_qty_left`, `#wc_optic_qty_right` | `text-align: center` |
+| `.wc-optic-config-table__label` | `padding-top` retiré (règle commentée dans `frontend.css`) |
+
+Fichier : `assets/css/frontend.css`.
 
 ---
 
@@ -172,7 +183,7 @@ Enregistré dans `class-wc-optic-plugin.php` et `class-wc-optic-autoload.php`.
 |---------|---------------|
 | `assets/js/frontend.js` | Power mode, prix défaut, pas de range |
 | `assets/js/cart.js` | Inchangé (sync qty) |
-| `assets/css/frontend.css` | Pill Eyewa power mode, line-summary total, qty fields |
+| `assets/css/frontend.css` | Pill Eyewa power mode, line-summary total, qty centrées, labels grille |
 | `assets/css/flatsome-cart-checkout.css` | **Nouveau** — styles panier/checkout Flatsome |
 
 ---
@@ -306,8 +317,8 @@ Domaine : `wc-optic` — traduction WPML via String Translation si actif.
 
 1. **`find_no_power_child()`** retourne le **premier** enfant +0.00 trouvé — si plusieurs variantes no-power (packs différents), seul le premier est utilisé en mode No power.
 2. **Flatsome** : styles basés sur la structure WooCommerce standard ; un override template Flatsome très custom peut nécessiter des ajustements CSS.
-3. **CHANGELOG.md** mis à jour — entrées **[1.2.2]**, **[1.2.1]** et **[1.2.0] — 2026-06-09**.
-4. **Version plugin** : **1.2.2** (`woocommerce-optic-product.php`, `composer.json`).
+3. **CHANGELOG.md** mis à jour à chaque bump — dernière entrée **[1.2.3] — 2026-06-09** (voir aussi [1.2.2], [1.2.1], [1.2.0]).
+4. **Version plugin** : **1.2.3** (`woocommerce-optic-product.php`, `composer.json`). Convention : toujours synchroniser `CHANGELOG.md` + `SESSION_HANDOFF.md` lors d’un changement de version.
 5. **`format_price_range_html()`** conservé en alias déprécié ; aucun appel interne ne produit plus de fourchette.
 6. Thème Flatsome **non présent** dans le workspace local au moment du dev — tests visuels à faire sur l’environnement WAMP réel.
 7. Couleurs du toggle Eyewa sont des **approximations** (#f4f4f5, #111827) — ajuster si charte Alwaleed différente.
@@ -362,4 +373,4 @@ php -l includes/class-wc-optic-flatsome.php
 
 ---
 
-*Dernière mise à jour : 2026-06-09 — v1.2.2, UI Eyewa pill, masquage division/prix formulaire.*
+*Dernière mise à jour : 2026-06-09 — v1.2.3, qty centrées, alignement labels formulaire.*
