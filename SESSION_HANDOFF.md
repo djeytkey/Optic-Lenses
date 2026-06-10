@@ -2,7 +2,7 @@
 
 **Date :** 2026-06-09  
 **Plugin :** `wp-content/plugins/Optic-Lenses`  
-**Version déclarée :** 1.2.0 (`woocommerce-optic-product.php`)  
+**Version déclarée :** 1.2.2 (`woocommerce-optic-product.php`)  
 **Thème cible boutique :** Flatsome (parent ou enfant)
 
 Ce document résume tout le travail réalisé pendant cette session Cursor, pour permettre à un autre développeur (ou une future session IA) de reprendre sans perte de contexte.
@@ -17,6 +17,8 @@ Cette session a porté sur **l’expérience boutique client** pour les produits
 2. **Prix unique** — fin des fourchettes min–max ; prix basé sur la **sélection par défaut** (option B).
 3. **Panier / checkout** — total par section œil + habillage **Flatsome moderne**.
 4. **Règles métier affinées** — « sans puissance » = SPH **+0.00** ; autres divisions = **prix le plus bas**.
+5. **UI fiche produit** — toggle No power/Power style **Eyewa** (pill) ; division et bloc prix formulaire **masqués** (v1.2.0).
+6. **Version** — bump **1.2.2** + `CHANGELOG.md`.
 
 Aucun commit git n’a été demandé ni créé pendant la session.
 
@@ -42,12 +44,33 @@ Ce n’est **pas** un SPH vide. Un produit interne est « no power » si son ter
 
 **Admin :** chaque variante no-power doit avoir un SPH **+0.00** explicite dans le catalogue (prix + stock obligatoires comme les autres enfants).
 
+**UI toggle (style [Eyewa](https://eyewa.com/ae-en/diva-color-contact-lenses-pack-of-2.html)) :**
+
+- Conteneur `.wc-optic-power-mode` : fond gris `#f4f4f5`, hauteur 53px, `border-radius: 60px`, padding 4px.
+- Onglets `.wc-optic-power-mode__tab` : `flex: 1`, transition 350ms.
+- Actif (`input:checked + label`) : fond blanc, texte `#111827`, `font-weight: 400`.
+- Inactif : texte `#6b7280`, `font-weight: 600`.
+- `data-testid="tab_no_power"` / `tab_power` ; IDs `#wc_optic_tab_no_power`, `#wc_optic_tab_power`.
+- Pas de libellé visible « Power type » (legend / `aria-label` uniquement).
+
 **Fichiers clés :**
 
-- `templates/single-product/add-to-cart/optic_product.php` — radios `wc_optic_power_mode` (`no_power` | `power`)
+- `templates/single-product/add-to-cart/optic_product.php` — structure pill `input` + `label`
+- `assets/css/frontend.css` — styles `.wc-optic-power-mode*`
 - `assets/js/frontend.js` — `togglePowerMode()`, `isNoPowerMode()`, `syncNoPowerChildFields()`
 - `includes/class-wc-optic-cart.php` — parse `wc_optic_power_mode`, payload `power_mode`
 - `includes/class-wc-optic-sku.php` — `child_is_no_power()`, `find_no_power_child()`, matrice `noPowerChild` / `children` séparés
+
+---
+
+### 2.5 Fiche produit — éléments masqués (v1.2.0)
+
+| Élément | Statut |
+|---------|--------|
+| `.wc-optic-division` | **Supprimé** du template (plus d’affichage « Optical division »). |
+| `.wc-optic-pricing` visible | **Supprimé** — bloc conservé en `hidden` pour sync JS vers le prix WooCommerce/Flatsome (`.summary > .price`). |
+
+Le client voit le prix uniquement via le bloc prix standard du thème ; le formulaire optique ne duplique plus prix ni division.
 
 ---
 
@@ -141,7 +164,7 @@ Enregistré dans `class-wc-optic-plugin.php` et `class-wc-optic-autoload.php`.
 
 | Fichier | Changements |
 |---------|---------------|
-| `templates/single-product/add-to-cart/optic_product.php` | Radios No power/Power ; bloc `.wc-optic-pricing` **caché** (sync JS → prix Flatsome/Woo) |
+| `templates/single-product/add-to-cart/optic_product.php` | Pill No power/Power ; pas de `.wc-optic-division` ; `.wc-optic-pricing` **hidden** (sync JS) |
 
 ### Assets
 
@@ -149,7 +172,7 @@ Enregistré dans `class-wc-optic-plugin.php` et `class-wc-optic-autoload.php`.
 |---------|---------------|
 | `assets/js/frontend.js` | Power mode, prix défaut, pas de range |
 | `assets/js/cart.js` | Inchangé (sync qty) |
-| `assets/css/frontend.css` | Power mode, line-summary total, qty fields |
+| `assets/css/frontend.css` | Pill Eyewa power mode, line-summary total, qty fields |
 | `assets/css/flatsome-cart-checkout.css` | **Nouveau** — styles panier/checkout Flatsome |
 
 ---
@@ -232,7 +255,7 @@ S’assurer qu’une entrée **+0.00** existe et est reconnaissable (`name`, `sl
 |-------------|--------|
 | No power | Radio + résumé panier |
 | Power | Radio |
-| Power type | Label section |
+| Power type | `aria-label` / legend (non visible à l’écran) |
 | This product is not available without power. | Erreur no-power indisponible |
 | Total | Total par section œil (panier) |
 | Qty | Quantité panier (mode single) |
@@ -250,6 +273,13 @@ Domaine : `wc-optic` — traduction WPML via String Translation si actif.
 - [ ] Add-to-cart No power → panier : `Power type: No power`, pas de puissances listées
 - [ ] Add-to-cart Power → panier : SPH affiché, total section correct
 - [ ] Stock rupture no-power → bouton désactivé / message
+- [ ] Toggle pill : onglet actif fond blanc, transition fluide, pleine largeur
+
+### Fiche produit — UI
+
+- [ ] Pas de ligne « Optical division »
+- [ ] Pas de bloc prix dans le formulaire (prix thème uniquement)
+- [ ] Prix thème se met à jour au changement No power / Power / SPH
 
 ### Prix
 
@@ -276,10 +306,11 @@ Domaine : `wc-optic` — traduction WPML via String Translation si actif.
 
 1. **`find_no_power_child()`** retourne le **premier** enfant +0.00 trouvé — si plusieurs variantes no-power (packs différents), seul le premier est utilisé en mode No power.
 2. **Flatsome** : styles basés sur la structure WooCommerce standard ; un override template Flatsome très custom peut nécessiter des ajustements CSS.
-3. **CHANGELOG.md** n’a pas été mis à jour pour cette session (toujours sur 1.1.0 / 2026-06-03).
-4. **Version plugin** : **1.2.0** (2026-06-09).
+3. **CHANGELOG.md** mis à jour — entrées **[1.2.2]**, **[1.2.1]** et **[1.2.0] — 2026-06-09**.
+4. **Version plugin** : **1.2.2** (`woocommerce-optic-product.php`, `composer.json`).
 5. **`format_price_range_html()`** conservé en alias déprécié ; aucun appel interne ne produit plus de fourchette.
 6. Thème Flatsome **non présent** dans le workspace local au moment du dev — tests visuels à faire sur l’environnement WAMP réel.
+7. Couleurs du toggle Eyewa sont des **approximations** (#f4f4f5, #111827) — ajuster si charte Alwaleed différente.
 
 ---
 
@@ -287,7 +318,7 @@ Domaine : `wc-optic` — traduction WPML via String Translation si actif.
 
 - Masquer l’option **Power** si aucun enfant avec puissance n’existe.
 - Afficher « À partir de » au lieu du prix sec (débattu, non retenu).
-- Changelog / bump version / commit git.
+- Commit git.
 - Tests automatisés PHPUnit / E2E.
 - Traductions WPML des nouvelles chaînes.
 - Admin : indication visuelle « variante No power » sur les produits internes.
@@ -325,7 +356,10 @@ php -l includes/class-wc-optic-flatsome.php
 | Autres divisions — prix défaut | **Prix le plus bas** (pas le premier enfant) |
 | Total panier par œil | **Oui** — fin de chaque section `wc-optic-line-summary__eye` |
 | Panier Flatsome | Module CSS dédié, cartes + sticky |
+| Division sur fiche | **Masquée** (info admin uniquement) |
+| Prix dans formulaire | **Masqué** — prix via thème + sync JS cachée |
+| Toggle No power/Power | Style **pill Eyewa** (réf. eyewa.com) |
 
 ---
 
-*Document généré en fin de session Cursor — 2026-06-09.*
+*Dernière mise à jour : 2026-06-09 — v1.2.2, UI Eyewa pill, masquage division/prix formulaire.*

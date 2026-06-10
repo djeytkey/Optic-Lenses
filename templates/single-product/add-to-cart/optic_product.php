@@ -3,7 +3,7 @@
  * Optic product add to cart form.
  *
  * @package WC_Optic_Product
- * @version 1.2.0
+ * @version 1.2.2
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -51,20 +51,19 @@ do_action( 'woocommerce_before_add_to_cart_form' );
 	<div class="wc-optic-config-card">
 		<?php if ( $supports_no_power ) : ?>
 			<div class="wc-optic-config-table__row wc-optic-power-mode-row">
-				<div class="wc-optic-config-table__label">
-					<strong><?php esc_html_e( 'Power type', 'wc-optic' ); ?></strong>
-				</div>
-				<div class="wc-optic-config-table__values">
-					<fieldset class="wc-optic-fieldset wc-optic-power-mode">
+				<div class="wc-optic-config-table__values wc-optic-power-mode-row__values">
+					<fieldset class="wc-optic-fieldset">
 						<legend class="screen-reader-text"><?php esc_html_e( 'Power type', 'wc-optic' ); ?></legend>
-						<label class="wc-optic-power-mode__option">
-							<input type="radio" name="wc_optic_power_mode" value="no_power" checked="checked" />
-							<?php esc_html_e( 'No power', 'wc-optic' ); ?>
-						</label>
-						<label class="wc-optic-power-mode__option">
-							<input type="radio" name="wc_optic_power_mode" value="power" />
-							<?php esc_html_e( 'Power', 'wc-optic' ); ?>
-						</label>
+						<div class="wc-optic-power-mode" role="radiogroup" aria-label="<?php esc_attr_e( 'Power type', 'wc-optic' ); ?>">
+							<input type="radio" name="wc_optic_power_mode" id="wc_optic_tab_no_power" value="no_power" class="wc-optic-power-mode__input" checked="checked" />
+							<label for="wc_optic_tab_no_power" class="wc-optic-power-mode__tab" data-testid="tab_no_power">
+								<?php esc_html_e( 'No power', 'wc-optic' ); ?>
+							</label>
+							<input type="radio" name="wc_optic_power_mode" id="wc_optic_tab_power" value="power" class="wc-optic-power-mode__input" />
+							<label for="wc_optic_tab_power" class="wc-optic-power-mode__tab" data-testid="tab_power">
+								<?php esc_html_e( 'Power', 'wc-optic' ); ?>
+							</label>
+						</div>
 					</fieldset>
 				</div>
 			</div>

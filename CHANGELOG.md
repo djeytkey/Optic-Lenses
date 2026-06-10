@@ -4,6 +4,20 @@ Toutes les modifications notables de **Alwaleed Optics Products** sont document�
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.2.2] — 2026-06-09
+
+### Modifié
+
+- Ajustements CSS du toggle **No power / Power** (pill Eyewa, focus visible, grille pleine largeur).
+- Mise à jour `SESSION_HANDOFF.md`.
+
+## [1.2.1] — 2026-06-09
+
+### Modifié
+
+- Toggle **No power / Power** en style pill (réf. Eyewa) : onglets arrondis, transition 350ms, pleine largeur.
+- `SESSION_HANDOFF.md` complété (UI, masquage division/prix, tests).
+
 ## [1.2.0] — 2026-06-09
 
 ### Ajouté
