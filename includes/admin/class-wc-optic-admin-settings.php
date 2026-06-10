@@ -16,22 +16,7 @@ class WC_Optic_Admin_Settings {
 	 * Hooks.
 	 */
 	public static function hooks() {
-		add_action( 'admin_menu', array( __CLASS__, 'menu' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
-	}
-
-	/**
-	 * Submenu under WooCommerce.
-	 */
-	public static function menu() {
-		add_submenu_page(
-			'woocommerce',
-			__( 'Optic Settings', 'wc-optic' ),
-			__( 'Optic Settings', 'wc-optic' ),
-			'manage_woocommerce',
-			'wc-optic-settings',
-			array( __CLASS__, 'render_page' )
-		);
 	}
 
 	/**
@@ -40,7 +25,7 @@ class WC_Optic_Admin_Settings {
 	 * @param string $hook Hook.
 	 */
 	public static function enqueue( $hook ) {
-		if ( 'woocommerce_page_wc-optic-settings' !== $hook ) {
+		if ( WC_Optic_Admin_Menu::SETTINGS_SCREEN !== $hook ) {
 			return;
 		}
 		wp_enqueue_style( 'dashicons' );

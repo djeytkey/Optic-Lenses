@@ -21,23 +21,8 @@ class WC_Optic_Admin_Import {
 	 * Hooks.
 	 */
 	public static function hooks() {
-		add_action( 'admin_menu', array( __CLASS__, 'menu' ), 60 );
 		add_action( 'admin_init', array( __CLASS__, 'maybe_download_template' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
-	}
-
-	/**
-	 * Submenu.
-	 */
-	public static function menu() {
-		add_submenu_page(
-			'woocommerce',
-			__( 'Optic Import', 'wc-optic' ),
-			__( 'Optic Import', 'wc-optic' ),
-			'manage_woocommerce',
-			'wc-optic-import',
-			array( __CLASS__, 'render_page' )
-		);
 	}
 
 	/**
@@ -46,7 +31,7 @@ class WC_Optic_Admin_Import {
 	 * @param string $hook Hook.
 	 */
 	public static function enqueue( $hook ) {
-		if ( 'woocommerce_page_wc-optic-import' !== $hook ) {
+		if ( WC_Optic_Admin_Menu::IMPORT_SCREEN !== $hook ) {
 			return;
 		}
 		wp_enqueue_style( 'dashicons' );

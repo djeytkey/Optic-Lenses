@@ -51,6 +51,7 @@ class WC_Optic_Plugin {
 		add_filter( 'woocommerce_product_class', array( $this, 'product_class' ), 10, 2 );
 		add_filter( 'product_type_selector', array( $this, 'product_type_selector' ) );
 
+		WC_Optic_Admin_Menu::hooks();
 		WC_Optic_Admin_Product::hooks();
 		WC_Optic_Admin_Settings::hooks();
 		WC_Optic_Admin_Import::hooks();
