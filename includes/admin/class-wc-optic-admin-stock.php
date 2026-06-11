@@ -16,44 +16,88 @@ class WC_Optic_Admin_Stock {
 	 * Hooks.
 	 */
 	public static function hooks() {
-		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_assets' ) );
+		add_action( 'admin_print_footer_scripts', array( __CLASS__, 'print_scripts' ), 20 );
 	}
 
 	/**
-	 * Enqueue assets on the stock page.
+	 * Whether the current request is the Stock admin page.
+	 *
+	 * @param string $hook Optional admin_enqueue_scripts hook suffix.
+	 * @return bool
+	 */
+	public static function is_stock_page( $hook = '' ) {
+		if ( isset( $_GET['page'] ) && 'wc-optic-stock' === sanitize_key( wp_unslash( $_GET['page'] ) ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+			return true;
+		}
+
+		return WC_Optic_Admin_Menu::STOCK_SCREEN === $hook;
+	}
+
+	/**
+	 * Active stock tab slug.
+	 *
+	 * @return string
+	 */
+	protected static function get_active_tab() {
+		$tab = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'management'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		return in_array( $tab, array( 'management', 'alerts' ), true ) ? $tab : 'management';
+	}
+
+	/**
+	 * JS config for admin-stock.js.
+	 *
+	 * @param string $tab Active tab.
+	 * @return array<string, mixed>
+	 */
+	protected static function get_js_config( $tab ) {
+		return array(
+			'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
+			'nonce'     => wp_create_nonce( 'wc_optic_admin' ),
+			'activeTab' => $tab,
+			'i18n'      => array(
+				'restockFailed'  => __( 'Could not update stock.', 'wc-optic' ),
+				'restockSuccess' => __( 'Stock updated.', 'wc-optic' ),
+				'expand'         => __( 'Show internal products', 'wc-optic' ),
+				'collapse'       => __( 'Hide internal products', 'wc-optic' ),
+			),
+			'dt'        => 'alerts' === $tab ? self::get_datatables_i18n() : array(),
+		);
+	}
+
+	/**
+	 * Enqueue styles (and register scripts) on the stock page.
 	 *
 	 * @param string $hook Hook suffix.
 	 */
-	public static function enqueue( $hook ) {
-		if ( WC_Optic_Admin_Menu::STOCK_SCREEN !== $hook ) {
+	public static function enqueue_assets( $hook ) {
+		if ( ! self::is_stock_page( $hook ) ) {
 			return;
 		}
 
-		$tab       = isset( $_GET['tab'] ) ? sanitize_key( wp_unslash( $_GET['tab'] ) ) : 'management'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$tab       = self::get_active_tab();
 		$is_alerts = 'alerts' === $tab;
 
 		wp_enqueue_style( 'dashicons' );
 		wp_enqueue_script( 'jquery' );
 
-		$style_deps  = array();
-		$script_deps = array( 'jquery' );
+		$style_deps = array();
 
 		if ( $is_alerts ) {
 			wp_enqueue_style(
-				'datatables',
+				'wc-optic-datatables',
 				WC_OPTIC_PLUGIN_URL . 'assets/vendor/datatables/dataTables.dataTables.min.css',
 				array(),
 				'2.1.8'
 			);
-			$style_deps[] = 'datatables';
-			wp_enqueue_script(
-				'datatables',
+			$style_deps[] = 'wc-optic-datatables';
+			wp_register_script(
+				'wc-optic-datatables',
 				WC_OPTIC_PLUGIN_URL . 'assets/vendor/datatables/dataTables.min.js',
 				array( 'jquery' ),
 				'2.1.8',
 				true
 			);
-			$script_deps[] = 'datatables';
 		}
 
 		wp_enqueue_style(
@@ -62,38 +106,31 @@ class WC_Optic_Admin_Stock {
 			$style_deps,
 			WC_OPTIC_VERSION
 		);
-		$stock_js = WC_OPTIC_PLUGIN_DIR . 'assets/js/admin-stock.js';
-		wp_enqueue_script(
-			'wc-optic-admin-stock',
-			WC_OPTIC_PLUGIN_URL . 'assets/js/admin-stock.js',
-			$script_deps,
-			is_readable( $stock_js ) ? (string) filemtime( $stock_js ) : WC_OPTIC_VERSION,
-			true
-		);
-		wp_localize_script(
-			'wc-optic-admin-stock',
-			'wcOpticStock',
-			array(
-				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-				'nonce'     => wp_create_nonce( 'wc_optic_admin' ),
-				'activeTab' => $tab,
-				'i18n'      => array(
-					'restockTitle'       => __( 'Restock internal product', 'wc-optic' ),
-					'restockLabel'       => __( 'Quantity to add', 'wc-optic' ),
-					'restockConfirm'     => __( 'Add stock', 'wc-optic' ),
-					'cancel'             => __( 'Cancel', 'wc-optic' ),
-					'restockFailed'      => __( 'Could not update stock.', 'wc-optic' ),
-					'restockSuccess'     => __( 'Stock updated.', 'wc-optic' ),
-					'expand'             => __( 'Show internal products', 'wc-optic' ),
-					'collapse'           => __( 'Hide internal products', 'wc-optic' ),
-					'expandAll'          => __( 'Expand all', 'wc-optic' ),
-					'collapseAll'        => __( 'Collapse all', 'wc-optic' ),
-					'searchPlaceholder'  => __( 'Search product or SKU…', 'wc-optic' ),
-					'noSearchResults'    => __( 'No products match your search.', 'wc-optic' ),
-				),
-				'dt'        => $is_alerts ? self::get_datatables_i18n() : array(),
-			)
-		);
+	}
+
+	/**
+	 * Print stock page scripts in the admin footer (reliable load after page markup).
+	 */
+	public static function print_scripts() {
+		if ( ! self::is_stock_page() ) {
+			return;
+		}
+
+		$tab       = self::get_active_tab();
+		$is_alerts = 'alerts' === $tab;
+		$stock_js  = WC_OPTIC_PLUGIN_DIR . 'assets/js/admin-stock.js';
+		$version   = is_readable( $stock_js ) ? (string) filemtime( $stock_js ) : WC_OPTIC_VERSION;
+
+		if ( $is_alerts ) {
+			echo '<script src="' . esc_url( WC_OPTIC_PLUGIN_URL . 'assets/vendor/datatables/dataTables.min.js' ) . '?ver=2.1.8"></script>' . "\n";
+		}
+
+		echo '<script id="wc-optic-stock-config">var wcOpticStock = ';
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_json_encode.
+		echo wp_json_encode( self::get_js_config( $tab ) );
+		echo ';</script>' . "\n";
+
+		echo '<script src="' . esc_url( WC_OPTIC_PLUGIN_URL . 'assets/js/admin-stock.js' ) . '?ver=' . esc_attr( $version ) . '"></script>' . "\n";
 	}
 
 	/**
