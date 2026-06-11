@@ -3,7 +3,7 @@
  * Optic product add to cart form.
  *
  * @package WC_Optic_Product
- * @version 1.2.3
+ * @version 1.2.4
  */
 
 defined( 'ABSPATH' ) || exit;

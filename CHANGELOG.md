@@ -4,6 +4,36 @@ Toutes les modifications notables de **Alwaleed Optics Products** sont document�
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.2.4] — 2026-06-11
+
+### Ajouté
+
+- **Backorder** : paramétrage global (Settings) et override **Custom** par produit interne ; stock vendable = stock physique + allowance − consommé − panier.
+- **Menu admin Alwaleed Optics** : menu principal sous Dashboard (Settings, Stock, Import) — hors menu WooCommerce.
+- **Page Stock** (`Alwaleed Optics → Stock`) :
+  - onglet **Stock management** : tableau hiérarchique parent / internes (repliable, recherche, Expand/Collapse all) ;
+  - onglet **Stock alerts** : DataTables avec QR code SKU interne, seuil global + override **Custom threshold** par interne ;
+  - **Restock** AJAX par produit interne (modal quantité) ;
+  - case optionnelle **Reset backorder** au restock (décochée par défaut ; libellé global vs custom) ;
+  - badge **N low stock** sur chaque ligne parent (visible replié ou déplié).
+- Bulle compteur d’alertes sur le menu **Alwaleed Optics** et le sous-menu **Stock**.
+- Classe **`WC_Optic_Stock`** (inventaire, alertes, `restock_child()`).
+- Classe **`WC_Optic_Admin_Stock`** + assets `admin-stock.js`, styles stock dans `admin.css`.
+- Endpoint AJAX **`wc_optic_restock_child`**.
+
+### Modifié
+
+- Settings : panneaux **Backorder** et **Stock alerts** côte à côte (2 colonnes).
+- Chargement JS page Stock via `admin_print_footer_scripts` (fiabilise chevrons, recherche, restock).
+- Suppression de l’option globale **Child selector** (radio/dropdown) ; sélection par puissances en cascade uniquement.
+- UI backorder admin : carte produit interne (toggle pill, badges Global/Custom).
+
+### Technique
+
+- Méta enfants : `backorder_custom`, `backorder_qty`, `backorder_consumed`, `alert_custom`, `alert_qty`.
+- `WC_Optic_SKU::get_remaining_child_stock()`, `apply_child_stock_delta()`, `preserve_child_backorder_consumed()`.
+- `SESSION_HANDOFF.md` synchronisé.
+
 ## [1.2.3] — 2026-06-09
 
 ### Modifié

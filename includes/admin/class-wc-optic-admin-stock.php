@@ -64,6 +64,7 @@ class WC_Optic_Admin_Stock {
 				'resetBackorderGlobal'   => __( 'Reset global backorder allowance (%d unit(s) consumed)', 'wc-optic' ),
 				'resetBackorderCustom'   => __( 'Reset custom backorder allowance (%d unit(s) consumed)', 'wc-optic' ),
 				'resetBackorderNoSold'   => __( 'Reset backorder allowance', 'wc-optic' ),
+				'lowStockCount'          => __( '%d low stock', 'wc-optic' ),
 			),
 			'dt'        => 'alerts' === $tab ? self::get_datatables_i18n() : array(),
 		);
@@ -265,6 +266,7 @@ class WC_Optic_Admin_Stock {
 		foreach ( $tree as $parent ) {
 			$product_id   = (int) $parent['product_id'];
 			$child_count  = (int) $parent['child_count'];
+			$low_count    = (int) ( $parent['low_count'] ?? 0 );
 			$has_children = $child_count > 0;
 			$row_id      = 'wc-optic-stock-parent-' . $product_id;
 			$search_bits = array(
@@ -296,6 +298,16 @@ class WC_Optic_Admin_Stock {
 			}
 			if ( $has_children ) {
 				echo ' <span class="wc-optic-stock-parent__count">' . esc_html( number_format_i18n( $child_count ) ) . ' ' . esc_html__( 'variants', 'wc-optic' ) . '</span>';
+				$low_hidden = $low_count < 1 ? ' wc-optic-is-hidden' : '';
+				echo ' <span class="wc-optic-stock-parent__low-count' . esc_attr( $low_hidden ) . '" data-low-count="' . esc_attr( (string) $low_count ) . '">';
+				echo esc_html(
+					sprintf(
+						/* translators: %d: number of internal products below alert threshold */
+						_n( '%d low stock', '%d low stock', $low_count, 'wc-optic' ),
+						$low_count
+					)
+				);
+				echo '</span>';
 			}
 			echo '</td>';
 			echo '<td class="wc-optic-stock-parent__sku"><code>' . esc_html( (string) $parent['sku'] ) . '</code></td>';

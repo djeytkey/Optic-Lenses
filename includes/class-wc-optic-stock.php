@@ -131,8 +131,14 @@ class WC_Optic_Stock {
 			$division   = (string) $product->get_meta( '_optic_division', true );
 			$child_rows = array();
 
+			$low_count = 0;
+
 			foreach ( $children as $config ) {
-				$child_rows[] = self::format_child_row( $product, $config, $division );
+				$row = self::format_child_row( $product, $config, $division );
+				if ( ! empty( $row['is_low'] ) ) {
+					++$low_count;
+				}
+				$child_rows[] = $row;
 			}
 
 			$tree[] = array(
@@ -141,6 +147,7 @@ class WC_Optic_Stock {
 				'sku'         => (string) $product->get_sku(),
 				'edit_url'    => (string) get_edit_post_link( $product->get_id(), 'raw' ),
 				'child_count' => count( $child_rows ),
+				'low_count'   => $low_count,
 				'children'    => $child_rows,
 			);
 		}

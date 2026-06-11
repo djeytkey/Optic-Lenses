@@ -252,6 +252,42 @@
 		} );
 	}
 
+	function formatLowStockCountLabel( count ) {
+		var template = i18n.lowStockCount || '%d low stock';
+		return template.replace( '%d', String( count ) );
+	}
+
+	function updateParentLowCount( productId ) {
+		var parentRow = qs(
+			'#wc-optic-stock-management tr.wc-optic-stock-parent[data-product-id="' +
+				productId +
+				'"]'
+		);
+		if ( ! parentRow ) {
+			return;
+		}
+
+		var childrenRow = document.getElementById(
+			'wc-optic-stock-parent-' + productId + '-children'
+		);
+		var lowCount = childrenRow
+			? qsa( '.wc-optic-stock-child--low', childrenRow ).length
+			: 0;
+		var badge = qs( '.wc-optic-stock-parent__low-count', parentRow );
+
+		if ( ! badge ) {
+			return;
+		}
+
+		badge.setAttribute( 'data-low-count', String( lowCount ) );
+		if ( lowCount > 0 ) {
+			badge.textContent = formatLowStockCountLabel( lowCount );
+			badge.classList.remove( 'wc-optic-is-hidden' );
+		} else {
+			badge.classList.add( 'wc-optic-is-hidden' );
+		}
+	}
+
 	function updateQtyCells( productId, childId, stock, isLow, backorderConsumed ) {
 		qsa(
 			'[data-product-id="' +
@@ -275,6 +311,8 @@
 		if ( typeof backorderConsumed !== 'undefined' ) {
 			updateBackorderCells( productId, childId, backorderConsumed );
 		}
+
+		updateParentLowCount( productId );
 
 		if ( alertsTable ) {
 			alertsTable.rows().invalidate( 'dom' ).draw( false );

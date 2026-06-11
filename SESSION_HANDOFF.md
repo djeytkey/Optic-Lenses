@@ -2,7 +2,7 @@
 
 **Date :** 2026-06-11 (dernière mise à jour)  
 **Plugin :** `wp-content/plugins/Optic-Lenses`  
-**Version déclarée :** 1.2.3 (`woocommerce-optic-product.php`) — *stock inventaire + backorder + menu admin ; bump version à planifier (suggéré 1.2.5)*  
+**Version déclarée :** 1.2.4 (`woocommerce-optic-product.php`, `composer.json`, `CHANGELOG.md`)  
 **Thème cible boutique :** Flatsome (parent ou enfant)
 
 Ce document résume tout le travail réalisé sur le plugin (sessions Cursor cumulées), pour permettre à un autre développeur (ou une future session IA) de reprendre sans perte de contexte.
@@ -16,9 +16,12 @@ Ce document résume tout le travail réalisé sur le plugin (sessions Cursor cum
 ### Session 2026-06-11 (courante)
 
 1. **Suivi inventaire — page Stock** — sous-menu **Alwaleed Optics → Stock** avec 2 onglets : gestion hiérarchique (parent + internes repliables) et alertes stock bas.
-2. **Restock AJAX** — bouton Restock par interne → popup quantité → incrémente `stock_qty` via `WC_Optic_Stock::restock_child()`.
-3. **Alertes stock** — seuil global configurable dans Settings (`wc_optic_stock_alert_qty`, défaut 5) ; bulle compteur sur menu principal et sous-menu Stock.
-4. **QR alertes** — onglet alertes affiche le QR code du SKU interne (via `WC_Optic_QR`).
+2. **Restock AJAX** — bouton Restock par interne → popup quantité → incrémente `stock_qty` via `WC_Optic_Stock::restock_child()` ; option **Reset backorder** (case décochée par défaut) remet `backorder_consumed` à 0 (libellé Global vs Custom selon l’interne).
+3. **Badge low stock parent** — chaque ligne parent affiche **« N low stock »** (rouge) à côté du compteur de variantes, visible **replié ou déplié** ; mis à jour après restock via JS.
+4. **Alertes stock** — seuil global configurable dans Settings (`wc_optic_stock_alert_qty`, défaut 5) ; override **Custom threshold** par interne ; bulle compteur sur menu principal et sous-menu Stock.
+5. **QR alertes** — onglet alertes affiche le QR code du SKU interne (via `WC_Optic_QR`).
+6. **Settings UI** — panneaux **Backorder** et **Stock alerts** côte à côte (2 colonnes).
+7. **Chargement JS Stock** — scripts injectés via `admin_print_footer_scripts` (prio 20) pour fiabiliser chevrons, recherche, expand/collapse et restock.
 
 ### Session 2026-06-10 (précédente)
 
@@ -295,12 +298,21 @@ Un produit interne est en alerte si alertes activées et `stock_qty ≤ seuil ef
 
 | Onglet | URL | Contenu |
 |--------|-----|---------|
-| **Stock management** | `tab=management` (défaut) | Table hiérarchique : lignes parent (nom, SKU) repliables via chevron ; internes : puissance, SKU, stock actuel, backorder units, badge Custom/Global, prix, bouton Restock |
-| **Stock alerts** | `tab=alerts` | Table : QR code SKU interne, SKU, puissance, produit parent, quantité actuelle, Restock |
+| **Stock management** | `tab=management` (défaut) | Table hiérarchique : lignes parent (nom, SKU, **N variants**, badge **N low stock**) repliables via chevron ; internes : puissance, SKU, stock actuel (+ badge Low), backorder units (+ « N sold »), Custom backorder, seuil alerte, Custom alert, prix, Restock |
+| **Stock alerts** | `tab=alerts` | DataTables : QR code SKU interne, SKU, puissance, produit parent, quantité actuelle, Restock |
 
-**Restock :** modal JS → AJAX `wc_optic_restock_child` → `WC_Optic_Stock::restock_child()` ajoute la quantité au `stock_qty` et sauvegarde via `WC_Optic_SKU::persist_child_data()`.
+**Ligne parent — compteur low stock :** `get_inventory_tree()` calcule `low_count` par produit parent. Badge `.wc-optic-stock-parent__low-count` affiché si `low_count > 0` (replié ou déplié). `admin-stock.js` recalcule après restock (`updateParentLowCount()`).
 
-**UI Stock management :** tableau hiérarchique repliable (chevron / clic ligne parent) + recherche + Expand/Collapse all. **Stock alerts** : DataTables.net (recherche, tri, pagination).
+**Restock :** modal JS (`#wc-optic-restock-modal`) → AJAX `wc_optic_restock_child` → `WC_Optic_Stock::restock_child( $product_id, $child_id, $qty, $reset_backorder )` :
+
+- Ajoute la quantité au `stock_qty` et sauvegarde via `WC_Optic_SKU::persist_child_data()`.
+- Si `reset_backorder` coché : `backorder_consumed = '0'` (ne modifie pas `backorder_custom` / `backorder_qty`).
+- Case visible si backorder global activé et `backorder_units > 0` sur l’interne ; libellé **Reset global/custom backorder allowance (N unit(s) consumed)**.
+- Lignes internes et alertes portent `data-backorder-custom`, `data-backorder-consumed`, `data-backorder-units` pour le modal.
+
+**UI Stock management :** tableau hiérarchique repliable (chevron / clic ligne parent) + recherche + Expand/Collapse all ; JS vanilla sur `#wc-optic-stock-root` + jQuery pour AJAX/DataTables. **Stock alerts** : DataTables.net uniquement sur cet onglet (`assets/vendor/datatables/*`).
+
+**Chargement assets :** `WC_Optic_Admin_Stock::enqueue_assets()` (styles) + `print_scripts()` en footer injecte `wcOpticStock` (JSON) puis `admin-stock.js` (cache-bust `filemtime`).
 
 **Badge menu :** `WC_Optic_Admin_Menu::add_alert_badges()` affiche le nombre d’alertes sur le menu **Alwaleed Optics** et le sous-menu **Stock** (style WordPress `awaiting-mod`).
 
@@ -311,10 +323,12 @@ WC_Optic_Stock::is_alert_enabled()
 WC_Optic_Stock::get_alert_qty()
 WC_Optic_Stock::get_child_alert_qty( $config )
 WC_Optic_Stock::child_is_low_stock( $config )
-WC_Optic_Stock::get_inventory_tree()
+WC_Optic_Stock::get_inventory_tree()   // inclut low_count par parent
+WC_Optic_Stock::format_child_row()
 WC_Optic_Stock::get_alerts()
 WC_Optic_Stock::get_alert_count()
-WC_Optic_Stock::restock_child( $product_id, $child_id, $qty )
+WC_Optic_Stock::restock_child( $product_id, $child_id, $qty, $reset_backorder = false )
+// Retour restock : stock, is_low, alert_count, backorder_consumed, backorder_reset
 ```
 
 **Fichiers :** `class-wc-optic-stock.php`, `class-wc-optic-admin-stock.php`, `admin-stock.js`, `admin.css`, `class-wc-optic-ajax.php`, `class-wc-optic-admin-menu.php`, `class-wc-optic-admin-settings.php`.
@@ -357,10 +371,10 @@ WC_Optic_Stock::restock_child( $product_id, $child_id, $qty )
 | `assets/js/cart.js` | Inchangé (sync qty) |
 | `assets/js/admin-settings.js` | Toggle visibilité champ backorder qty global |
 | `assets/js/admin-product.js` | Toggle Custom backorder, sync affichage par interne |
-| `assets/js/admin-stock.js` | DataTables init, modal restock |
+| `assets/js/admin-stock.js` | Collapsible parent rows, recherche, expand/collapse, modal restock (+ reset backorder), badge low stock parent, DataTables (onglet alertes) |
 | `assets/vendor/datatables/*` | DataTables.net + RowGroup (bundled) |
 | `assets/css/frontend.css` | Pill Eyewa power mode, line-summary total, qty centrées, labels grille |
-| `assets/css/admin.css` | Backorder admin, **stock tables + modal restock**, `.wc-optic-is-hidden` |
+| `assets/css/admin.css` | Backorder admin, Settings 2 colonnes, **stock tables + modal restock + badge low stock**, `.wc-optic-is-hidden` |
 | `assets/css/flatsome-cart-checkout.css` | Styles panier/checkout Flatsome |
 
 ---
@@ -468,6 +482,9 @@ S’assurer qu’une entrée **+0.00** existe et est reconnaissable (`name`, `sl
 | Settings / Stock / Import | Sous-menus Alwaleed Optics |
 | Stock management / Stock alerts | Onglets page Stock |
 | Restock / Quantity to add / Add stock | Modal réapprovisionnement |
+| Reset global/custom backorder allowance (N unit(s) consumed) | Case optionnelle modal restock |
+| N low stock | Badge compteur sur ligne parent (onglet gestion) |
+| Alert threshold / Custom alert | Colonnes tableau internes + override fiche produit |
 | Alert threshold / Stock alerts | Settings + onglet alertes |
 | Low | Badge stock bas (onglet gestion) |
 
@@ -516,8 +533,10 @@ Domaine : `wc-optic` — traduction WPML via String Translation si actif.
 ### Stock inventaire
 
 - [ ] Menu **Stock** visible sous Alwaleed Optics
-- [ ] Onglet gestion : chevron déplie les internes (puissance, SKU, stock, backorder, prix)
+- [ ] Onglet gestion : chevron déplie les internes (puissance, SKU, stock, backorder, seuil alerte, prix)
+- [ ] Ligne parent : badge **N low stock** visible replié et déplié si au moins un interne en alerte
 - [ ] Restock : popup → ajout qty → stock mis à jour sans rechargement
+- [ ] Restock : case **Reset backorder** (décochée par défaut) → si cochée, `backorder_consumed` remis à 0 ; libellé global vs custom
 - [ ] Settings : seuil alerte (ex. 5) → internes ≤ 5 listés dans onglet alertes
 - [ ] Bulle compteur sur menu Alwaleed Optics et sous-menu Stock
 - [ ] Onglet alertes : QR code + SKU + quantité actuelle
@@ -537,12 +556,12 @@ Domaine : `wc-optic` — traduction WPML via String Translation si actif.
 
 1. **`find_no_power_child()`** retourne le **premier** enfant +0.00 trouvé — si plusieurs variantes no-power (packs différents), seul le premier est utilisé en mode No power.
 2. **Flatsome** : styles basés sur la structure WooCommerce standard ; un override template Flatsome très custom peut nécessiter des ajustements CSS.
-3. **CHANGELOG.md** mis à jour à chaque bump — dernière entrée **[1.2.3] — 2026-06-09** (voir aussi [1.2.2], [1.2.1], [1.2.0]).
-4. **Version plugin** : **1.2.3** (`woocommerce-optic-product.php`, `composer.json`). Convention : toujours synchroniser `CHANGELOG.md` + `SESSION_HANDOFF.md` lors d’un changement de version.
+3. **CHANGELOG.md** mis à jour à chaque bump — dernière entrée **[1.2.4] — 2026-06-11** (voir aussi [1.2.3], [1.2.2], [1.2.1], [1.2.0]).
+4. **Version plugin** : **1.2.4** (`woocommerce-optic-product.php`, `composer.json`). Convention : toujours synchroniser `CHANGELOG.md` + `SESSION_HANDOFF.md` lors d’un changement de version.
 5. **`format_price_range_html()`** conservé en alias déprécié ; aucun appel interne ne produit plus de fourchette.
 6. Thème Flatsome **non présent** dans le workspace local au moment du dev — tests visuels à faire sur l’environnement WAMP réel.
 7. Couleurs du toggle Eyewa sont des **approximations** (#f4f4f5, #111827) — ajuster si charte Alwaleed différente.
-8. **Backorder + menu admin (2026-06-10)** : pas encore de bump version ni entrée `CHANGELOG.md` — à faire avant release (suggéré **1.2.4**).
+8. **Backorder + menu admin + Stock (2026-06-10/11)** : livré en **1.2.4** (`CHANGELOG.md`).
 9. **Backorder désactivé globalement** : champs Custom masqués en admin produit ; `get_child_backorder_qty()` retourne 0.
 10. **`backorder_consumed`** est conservé à la sauvegarde produit via `preserve_child_backorder_consumed()` — ne pas supprimer le hidden field admin.
 
@@ -556,7 +575,6 @@ Domaine : `wc-optic` — traduction WPML via String Translation si actif.
 - Tests automatisés PHPUnit / E2E.
 - Traductions WPML des nouvelles chaînes.
 - Admin : indication visuelle « variante No power » sur les produits internes.
-- Bump version **1.2.4** + `CHANGELOG.md` pour backorder et menu admin.
 - Commit git.
 
 ---
@@ -602,12 +620,14 @@ php -l includes/admin/class-wc-optic-admin-settings.php
 | Backorder | Stock vendable = physique + allowance − consommé − panier |
 | Backorder par interne | **Custom** checkbox ; sinon règle globale Settings |
 | Menu admin | **Alwaleed Optics** top-level (pos. 3), plus sous WooCommerce |
-| Page Stock | Gestion hiérarchique + alertes + restock AJAX ; badge menu si alertes |
-| Seuil alerte stock | Global Settings ; compare **stock physique** uniquement |
+| Page Stock | Gestion hiérarchique + alertes + restock AJAX ; badge menu si alertes ; badge **N low stock** par parent |
+| Restock backorder | Case optionnelle reset `backorder_consumed` ; libellé selon règle global/custom |
+| Seuil alerte stock | Global Settings ; compare **stock physique** uniquement ; override Custom par interne |
+| Settings layout | Panneaux Backorder + Stock alerts en **2 colonnes** |
 | Child selector UI | **Supprimé** — sélection par puissances en cascade uniquement |
 | Mise à jour handoff | **À chaque prompt** significatif — mettre à jour `SESSION_HANDOFF.md` |
 | Règle Cursor | `.cursor/rules/session-handoff.mdc` (`alwaysApply: true`) — impose la mise à jour du handoff |
 
 ---
 
-*Dernière mise à jour : 2026-06-11 — page Stock (inventaire hiérarchique, alertes, restock, badge menu).*
+*Dernière mise à jour : 2026-06-11 — version **1.2.4** (backorder, menu admin, page Stock, reset backorder, badge low stock).*
