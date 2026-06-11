@@ -198,14 +198,19 @@ class WC_Optic_Stock {
 				$sku   = (string) ( $config['sku'] ?? '' );
 				$stock = WC_Optic_SKU::get_child_stock_qty( $config );
 
+				$row = self::format_child_row( $product, $config, $division );
+
 				$alerts[] = array(
-					'product_id'   => $product->get_id(),
-					'product_name' => $product->get_name(),
-					'child_id'     => (string) ( $config['id'] ?? '' ),
-					'sku'          => $sku,
-					'stock'        => null === $stock ? 0 : (int) $stock,
-					'powers'       => WC_Optic_SKU::child_display_label( $config, $division ),
-					'qr_html'      => WC_Optic_QR::render_admin_block( $sku, '', 80 ),
+					'product_id'         => $product->get_id(),
+					'product_name'       => $product->get_name(),
+					'child_id'           => (string) ( $config['id'] ?? '' ),
+					'sku'                => $sku,
+					'stock'              => null === $stock ? 0 : (int) $stock,
+					'powers'             => WC_Optic_SKU::child_display_label( $config, $division ),
+					'qr_html'            => WC_Optic_QR::render_admin_block( $sku, '', 80 ),
+					'backorder_units'    => (int) $row['backorder_units'],
+					'backorder_consumed' => (int) $row['backorder_consumed'],
+					'backorder_custom'   => ! empty( $row['backorder_custom'] ),
 				);
 			}
 		}
@@ -225,12 +230,13 @@ class WC_Optic_Stock {
 	/**
 	 * Add units to one internal product's physical stock.
 	 *
-	 * @param int    $product_id Parent product ID.
-	 * @param string $child_id   Child config ID.
-	 * @param int    $qty        Units to add.
+	 * @param int    $product_id      Parent product ID.
+	 * @param string $child_id        Child config ID.
+	 * @param int    $qty             Units to add.
+	 * @param bool   $reset_backorder Whether to clear consumed backorder units.
 	 * @return array<string, mixed>|WP_Error
 	 */
-	public static function restock_child( $product_id, $child_id, $qty ) {
+	public static function restock_child( $product_id, $child_id, $qty, $reset_backorder = false ) {
 		$product_id = absint( $product_id );
 		$child_id   = sanitize_key( (string) $child_id );
 		$qty        = absint( $qty );
@@ -260,6 +266,10 @@ class WC_Optic_Stock {
 				$configs[ $index ]['stock_qty'] = (string) ( $current + $qty );
 			}
 
+			if ( $reset_backorder ) {
+				$configs[ $index ]['backorder_consumed'] = '0';
+			}
+
 			$updated_config = $configs[ $index ];
 			$found          = true;
 			break;
@@ -275,9 +285,11 @@ class WC_Optic_Stock {
 		$new_stock = WC_Optic_SKU::get_child_stock_qty( $updated_config );
 
 		return array(
-			'stock'       => null === $new_stock ? 0 : (int) $new_stock,
-			'is_low'      => self::child_is_low_stock( $updated_config ),
-			'alert_count' => self::get_alert_count(),
+			'stock'              => null === $new_stock ? 0 : (int) $new_stock,
+			'is_low'             => self::child_is_low_stock( $updated_config ),
+			'alert_count'        => self::get_alert_count(),
+			'backorder_consumed' => WC_Optic_SKU::get_child_backorder_consumed( $updated_config ),
+			'backorder_reset'    => (bool) $reset_backorder,
 		);
 	}
 }

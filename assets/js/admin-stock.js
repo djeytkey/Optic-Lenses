@@ -141,6 +141,43 @@
 		setHidden( emptyMsg, visible > 0 || ! term );
 	}
 
+	function formatResetBackorderLabel( isCustom, consumed ) {
+		var sold = parseInt( consumed, 10 ) || 0;
+		var template = isCustom
+			? i18n.resetBackorderCustom
+			: i18n.resetBackorderGlobal;
+
+		if ( template && sold > 0 ) {
+			return template.replace( '%d', String( sold ) );
+		}
+
+		return i18n.resetBackorderNoSold || template || '';
+	}
+
+	function setupBackorderOption( row, modal ) {
+		var backorderBlock = qs( '.wc-optic-restock-modal__backorder', modal );
+		var resetCheckbox = document.getElementById(
+			'wc-optic-restock-reset-backorder'
+		);
+		var labelEl = qs( '.wc-optic-restock-modal__backorder-label', modal );
+
+		if ( ! backorderBlock || ! resetCheckbox ) {
+			return;
+		}
+
+		var units = parseInt( rowData( row, 'backorder-units' ), 10 ) || 0;
+		var consumed = parseInt( rowData( row, 'backorder-consumed' ), 10 ) || 0;
+		var isCustom = rowData( row, 'backorder-custom' ) === '1';
+		var show = !! cfg.backorderEnabled && units > 0;
+
+		setHidden( backorderBlock, ! show );
+		resetCheckbox.checked = false;
+
+		if ( labelEl ) {
+			labelEl.textContent = formatResetBackorderLabel( isCustom, consumed );
+		}
+	}
+
 	function openModal( row ) {
 		var modal = getModal();
 		if ( ! modal || ! row ) {
@@ -163,6 +200,8 @@
 			message.textContent = '';
 		}
 
+		setupBackorderOption( row, modal );
+
 		modal.classList.remove( 'wc-optic-is-hidden' );
 		modal.removeAttribute( 'hidden' );
 		if ( qtyInput ) {
@@ -180,7 +219,40 @@
 		modal.setAttribute( 'hidden', 'hidden' );
 	}
 
-	function updateQtyCells( productId, childId, stock, isLow ) {
+	function updateBackorderCells( productId, childId, consumed ) {
+		qsa(
+			'[data-product-id="' +
+				productId +
+				'"][data-child-id="' +
+				childId +
+				'"]'
+		).forEach( function ( row ) {
+			var sold = parseInt( consumed, 10 ) || 0;
+
+			row.setAttribute( 'data-backorder-consumed', String( sold ) );
+
+			var backorderCell = qs( '.wc-optic-stock-child__backorder', row );
+			if ( ! backorderCell ) {
+				return;
+			}
+
+			var soldEl = qs( '.wc-optic-stock-backorder-sold', backorderCell );
+			if ( sold > 0 ) {
+				if ( ! soldEl ) {
+					soldEl = document.createElement( 'span' );
+					soldEl.className =
+						'description wc-optic-stock-backorder-sold';
+					backorderCell.appendChild( document.createTextNode( ' ' ) );
+					backorderCell.appendChild( soldEl );
+				}
+				soldEl.textContent = '(' + sold + ' sold)';
+			} else if ( soldEl ) {
+				soldEl.remove();
+			}
+		} );
+	}
+
+	function updateQtyCells( productId, childId, stock, isLow, backorderConsumed ) {
 		qsa(
 			'[data-product-id="' +
 				productId +
@@ -199,6 +271,10 @@
 				lowBadge.style.display = isLow ? '' : 'none';
 			}
 		} );
+
+		if ( typeof backorderConsumed !== 'undefined' ) {
+			updateBackorderCells( productId, childId, backorderConsumed );
+		}
 
 		if ( alertsTable ) {
 			alertsTable.rows().invalidate( 'dom' ).draw( false );
@@ -238,6 +314,13 @@
 		var confirmBtn = modal
 			? qs( '.wc-optic-restock-modal__confirm', modal )
 			: null;
+		var resetCheckbox = document.getElementById(
+			'wc-optic-restock-reset-backorder'
+		);
+		var resetBackorder =
+			resetCheckbox &&
+			resetCheckbox.checked &&
+			! resetCheckbox.closest( '.wc-optic-is-hidden' );
 
 		if ( confirmBtn ) {
 			confirmBtn.disabled = true;
@@ -252,6 +335,7 @@
 			product_id: productId,
 			child_id: childId,
 			qty: qty,
+			reset_backorder: resetBackorder ? 1 : 0,
 		} )
 			.done( function ( response ) {
 				if ( ! response || ! response.success || ! response.data ) {
@@ -265,7 +349,8 @@
 					productId,
 					childId,
 					response.data.stock,
-					response.data.is_low
+					response.data.is_low,
+					response.data.backorder_consumed
 				);
 
 				if ( message ) {

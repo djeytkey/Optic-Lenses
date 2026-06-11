@@ -127,11 +127,12 @@ class WC_Optic_Ajax {
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'wc-optic' ) ), 403 );
 		}
 
-		$product_id = isset( $_POST['product_id'] ) ? absint( wp_unslash( $_POST['product_id'] ) ) : 0;
-		$child_id   = isset( $_POST['child_id'] ) ? sanitize_key( wp_unslash( $_POST['child_id'] ) ) : '';
-		$qty        = isset( $_POST['qty'] ) ? absint( wp_unslash( $_POST['qty'] ) ) : 0;
+		$product_id      = isset( $_POST['product_id'] ) ? absint( wp_unslash( $_POST['product_id'] ) ) : 0;
+		$child_id        = isset( $_POST['child_id'] ) ? sanitize_key( wp_unslash( $_POST['child_id'] ) ) : '';
+		$qty             = isset( $_POST['qty'] ) ? absint( wp_unslash( $_POST['qty'] ) ) : 0;
+		$reset_backorder = ! empty( $_POST['reset_backorder'] );
 
-		$result = WC_Optic_Stock::restock_child( $product_id, $child_id, $qty );
+		$result = WC_Optic_Stock::restock_child( $product_id, $child_id, $qty, $reset_backorder );
 		if ( is_wp_error( $result ) ) {
 			wp_send_json_error( array( 'message' => $result->get_error_message() ), 400 );
 		}

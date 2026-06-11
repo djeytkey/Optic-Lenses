@@ -52,14 +52,18 @@ class WC_Optic_Admin_Stock {
 	 */
 	protected static function get_js_config( $tab ) {
 		return array(
-			'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-			'nonce'     => wp_create_nonce( 'wc_optic_admin' ),
-			'activeTab' => $tab,
-			'i18n'      => array(
-				'restockFailed'  => __( 'Could not update stock.', 'wc-optic' ),
-				'restockSuccess' => __( 'Stock updated.', 'wc-optic' ),
-				'expand'         => __( 'Show internal products', 'wc-optic' ),
-				'collapse'       => __( 'Hide internal products', 'wc-optic' ),
+			'ajaxUrl'          => admin_url( 'admin-ajax.php' ),
+			'nonce'            => wp_create_nonce( 'wc_optic_admin' ),
+			'activeTab'        => $tab,
+			'backorderEnabled' => WC_Optic_SKU::is_backorder_enabled(),
+			'i18n'             => array(
+				'restockFailed'          => __( 'Could not update stock.', 'wc-optic' ),
+				'restockSuccess'         => __( 'Stock updated.', 'wc-optic' ),
+				'expand'                 => __( 'Show internal products', 'wc-optic' ),
+				'collapse'               => __( 'Hide internal products', 'wc-optic' ),
+				'resetBackorderGlobal'   => __( 'Reset global backorder allowance (%d unit(s) consumed)', 'wc-optic' ),
+				'resetBackorderCustom'   => __( 'Reset custom backorder allowance (%d unit(s) consumed)', 'wc-optic' ),
+				'resetBackorderNoSold'   => __( 'Reset backorder allowance', 'wc-optic' ),
 			),
 			'dt'        => 'alerts' === $tab ? self::get_datatables_i18n() : array(),
 		);
@@ -324,7 +328,10 @@ class WC_Optic_Admin_Stock {
 				echo '<tr class="wc-optic-stock-child' . esc_attr( $low_class ) . '"';
 				echo ' data-product-id="' . esc_attr( (string) $child['product_id'] ) . '"';
 				echo ' data-child-id="' . esc_attr( (string) $child['child_id'] ) . '"';
-				echo ' data-sku="' . esc_attr( (string) $child['sku'] ) . '">';
+				echo ' data-sku="' . esc_attr( (string) $child['sku'] ) . '"';
+				echo ' data-backorder-custom="' . esc_attr( ! empty( $child['backorder_custom'] ) ? '1' : '0' ) . '"';
+				echo ' data-backorder-consumed="' . esc_attr( (string) (int) $child['backorder_consumed'] ) . '"';
+				echo ' data-backorder-units="' . esc_attr( (string) (int) $child['backorder_units'] ) . '">';
 				echo '<td class="wc-optic-stock-child__power">' . esc_html( (string) $child['powers'] ) . '</td>';
 				echo '<td><code>' . esc_html( (string) $child['sku'] ) . '</code></td>';
 				echo '<td class="wc-optic-stock-child__qty">';
@@ -333,10 +340,10 @@ class WC_Optic_Admin_Stock {
 					echo ' <span class="wc-optic-stock-low-badge" title="' . esc_attr__( 'Low stock', 'wc-optic' ) . '">' . esc_html__( 'Low', 'wc-optic' ) . '</span>';
 				}
 				echo '</td>';
-				echo '<td>';
+				echo '<td class="wc-optic-stock-child__backorder">';
 				echo esc_html( (string) $child['backorder_units'] );
 				if ( (int) $child['backorder_consumed'] > 0 ) {
-					echo ' <span class="description">(';
+					echo ' <span class="description wc-optic-stock-backorder-sold">(';
 					echo esc_html(
 						sprintf(
 							/* translators: %d: consumed backorder units */
@@ -402,7 +409,10 @@ class WC_Optic_Admin_Stock {
 			echo '<tr class="wc-optic-stock-alert"';
 			echo ' data-product-id="' . esc_attr( (string) $alert['product_id'] ) . '"';
 			echo ' data-child-id="' . esc_attr( (string) $alert['child_id'] ) . '"';
-			echo ' data-sku="' . esc_attr( (string) $alert['sku'] ) . '">';
+			echo ' data-sku="' . esc_attr( (string) $alert['sku'] ) . '"';
+			echo ' data-backorder-custom="' . esc_attr( ! empty( $alert['backorder_custom'] ) ? '1' : '0' ) . '"';
+			echo ' data-backorder-consumed="' . esc_attr( (string) (int) $alert['backorder_consumed'] ) . '"';
+			echo ' data-backorder-units="' . esc_attr( (string) (int) $alert['backorder_units'] ) . '">';
 			echo '<td class="wc-optic-stock-alert__qr">';
 			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- built via WC_Optic_QR.
 			echo $alert['qr_html'];
@@ -437,6 +447,12 @@ class WC_Optic_Admin_Stock {
 		echo '<p>';
 		echo '<label for="wc-optic-restock-qty">' . esc_html__( 'Quantity to add', 'wc-optic' ) . '</label><br />';
 		echo '<input type="number" id="wc-optic-restock-qty" class="wc-optic-restock-modal__input" min="1" step="1" value="1" />';
+		echo '</p>';
+		echo '<p class="wc-optic-restock-modal__backorder wc-optic-is-hidden">';
+		echo '<label>';
+		echo '<input type="checkbox" id="wc-optic-restock-reset-backorder" value="1" /> ';
+		echo '<span class="wc-optic-restock-modal__backorder-label"></span>';
+		echo '</label>';
 		echo '</p>';
 		echo '<p class="wc-optic-restock-modal__actions">';
 		echo '<button type="button" class="button button-primary wc-optic-restock-modal__confirm">' . esc_html__( 'Add stock', 'wc-optic' ) . '</button> ';

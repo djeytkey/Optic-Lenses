@@ -916,6 +916,21 @@
 	margin-top: 0.35rem;
 }
 
+.wc-optic-restock-modal__backorder {
+	margin: 0 0 1rem;
+}
+
+.wc-optic-restock-modal__backorder label {
+	display: inline-flex;
+	align-items: flex-start;
+	gap: 0.35rem;
+	cursor: pointer;
+}
+
+.wc-optic-restock-modal__backorder input {
+	margin-top: 0.2rem;
+}
+
 .wc-optic-restock-modal__message {
 	min-height: 1.25em;
 	margin: 0.75rem 0 0;
