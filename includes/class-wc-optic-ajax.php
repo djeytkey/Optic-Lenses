@@ -19,6 +19,7 @@ class WC_Optic_Ajax {
 		add_action( 'wp_ajax_wc_optic_create_term', array( __CLASS__, 'create_term' ) );
 		add_action( 'wp_ajax_wc_optic_delete_term', array( __CLASS__, 'delete_term' ) );
 		add_action( 'wp_ajax_wc_optic_preview_sku', array( __CLASS__, 'preview_sku' ) );
+		add_action( 'wp_ajax_wc_optic_restock_child', array( __CLASS__, 'restock_child' ) );
 	}
 
 	/**
@@ -115,5 +116,26 @@ class WC_Optic_Ajax {
 				'qr_html' => WC_Optic_QR::render_admin_block( $sku ),
 			)
 		);
+	}
+
+	/**
+	 * Add stock to one internal product (stock management page).
+	 */
+	public static function restock_child() {
+		check_ajax_referer( 'wc_optic_admin', 'nonce' );
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'wc-optic' ) ), 403 );
+		}
+
+		$product_id = isset( $_POST['product_id'] ) ? absint( wp_unslash( $_POST['product_id'] ) ) : 0;
+		$child_id   = isset( $_POST['child_id'] ) ? sanitize_key( wp_unslash( $_POST['child_id'] ) ) : '';
+		$qty        = isset( $_POST['qty'] ) ? absint( wp_unslash( $_POST['qty'] ) ) : 0;
+
+		$result = WC_Optic_Stock::restock_child( $product_id, $child_id, $qty );
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( array( 'message' => $result->get_error_message() ), 400 );
+		}
+
+		wp_send_json_success( $result );
 	}
 }

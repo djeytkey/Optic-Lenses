@@ -321,5 +321,25 @@
 
 		syncGlobalBackorderPanel();
 		$enabled.on( 'change', syncGlobalBackorderPanel );
+
+		var $alertEnabled = $( '#wc_optic_global_stock_alert_enabled' );
+		var $alertPanel = $( '#wc-optic-global-stock-alert-panel' );
+		var $alertQtyWrap = $( '.wc-optic-global-stock-alert-qty-wrap' );
+
+		function syncGlobalStockAlertPanel() {
+			if ( ! $alertEnabled.length ) {
+				return;
+			}
+			var isOn = $alertEnabled.is( ':checked' );
+			if ( $alertPanel.length ) {
+				$alertPanel.toggleClass( 'wc-optic-backorder-panel--enabled', isOn );
+			}
+			if ( $alertQtyWrap.length ) {
+				$alertQtyWrap.toggleClass( 'wc-optic-is-hidden', ! isOn );
+			}
+		}
+
+		syncGlobalStockAlertPanel();
+		$alertEnabled.on( 'change', syncGlobalStockAlertPanel );
 	} );
 }( jQuery ) );

@@ -247,15 +247,20 @@ class WC_Optic_Admin_Product {
 				'isNewProduct'   => self::is_new_product_screen(),
 				'divisionPowers' => $division_powers,
 				'powerTypes'     => WC_Optic_Catalog::get_power_types(),
-				'backorderEnabled' => WC_Optic_SKU::is_backorder_enabled(),
+				'backorderEnabled'   => WC_Optic_SKU::is_backorder_enabled(),
 				'globalBackorderQty' => WC_Optic_SKU::get_global_backorder_qty(),
-				'i18n'           => array(
-					'product'          => __( 'Product', 'wc-optic' ),
-					'remove'           => __( 'Remove', 'wc-optic' ),
-					'backorderAllowed' => __( 'Backorder allowed', 'wc-optic' ),
-					'backorderGlobal'  => __( 'Global', 'wc-optic' ),
-					'backorderCustom'  => __( 'Custom', 'wc-optic' ),
-					'backorderDisabled'=> __( 'Backorder is disabled in global settings.', 'wc-optic' ),
+				'alertEnabled'       => WC_Optic_Stock::is_alert_enabled(),
+				'globalAlertQty'     => WC_Optic_Stock::get_alert_qty(),
+				'i18n'               => array(
+					'product'           => __( 'Product', 'wc-optic' ),
+					'remove'            => __( 'Remove', 'wc-optic' ),
+					'backorderAllowed'  => __( 'Backorder allowed', 'wc-optic' ),
+					'backorderGlobal'   => __( 'Global', 'wc-optic' ),
+					'backorderCustom'   => __( 'Custom', 'wc-optic' ),
+					'backorderDisabled' => __( 'Backorder is disabled in global settings.', 'wc-optic' ),
+					'alertGlobal'       => __( 'Global', 'wc-optic' ),
+					'alertCustom'       => __( 'Custom', 'wc-optic' ),
+					'alertDisabled'     => __( 'Stock alerts are disabled in global settings.', 'wc-optic' ),
 				),
 			)
 		);
@@ -334,6 +339,66 @@ class WC_Optic_Admin_Product {
 	}
 
 	/**
+	 * Render stock alert threshold fields for one internal product.
+	 *
+	 * @param array  $config      Child config.
+	 * @param string $index_token Field index token.
+	 */
+	protected static function render_child_alert_fields( array $config, $index_token ) {
+		$alert_custom  = ! empty( $config['alert_custom'] );
+		$alert_enabled = WC_Optic_Stock::is_alert_enabled();
+		$custom_qty    = isset( $config['alert_qty'] ) && '' !== trim( (string) $config['alert_qty'] )
+			? (string) absint( $config['alert_qty'] )
+			: (string) WC_Optic_Stock::get_alert_qty();
+		$display_qty   = $alert_custom
+			? $custom_qty
+			: ( $alert_enabled ? (string) WC_Optic_Stock::get_alert_qty() : '0' );
+		$pf            = '_optic_child_configs[' . $index_token . ']';
+		$row_class     = 'wc-optic-child-backorder-card wc-optic-child-alert-card wc-optic-child-alert-row';
+		if ( ! $alert_enabled ) {
+			$row_class .= ' wc-optic-backorder-disabled';
+		}
+		if ( $alert_custom ) {
+			$row_class .= ' wc-optic-child-backorder-card--custom';
+		}
+
+		echo '<div class="' . esc_attr( $row_class ) . '">';
+		echo '<div class="wc-optic-child-backorder-card__header">';
+		echo '<span class="wc-optic-child-backorder-card__title">' . esc_html__( 'Stock alert threshold', 'wc-optic' ) . '</span>';
+		echo '<span class="wc-optic-child-backorder-card__source wc-optic-child-alert-card__source">';
+		echo esc_html( $alert_custom ? __( 'Custom', 'wc-optic' ) : __( 'Global', 'wc-optic' ) );
+		echo '</span>';
+		echo '</div>';
+
+		echo '<div class="wc-optic-child-backorder-card__body">';
+		echo '<div class="wc-optic-child-backorder-effective">';
+		echo '<span class="wc-optic-child-alert-display wc-optic-child-backorder-effective__value">' . esc_html( $display_qty ) . '</span>';
+		echo '<span class="wc-optic-child-backorder-effective__label">' . esc_html__( 'units or less', 'wc-optic' ) . '</span>';
+		echo '</div>';
+
+		echo '<div class="wc-optic-child-backorder-card__controls">';
+		echo '<label class="wc-optic-backorder-toggle wc-optic-child-alert-custom-label">';
+		echo '<input type="checkbox" class="wc-optic-child-alert-custom wc-optic-backorder-toggle__input" name="' . esc_attr( $pf ) . '[alert_custom]" value="1" ' . checked( $alert_custom, true, false ) . ' />';
+		echo '<span class="wc-optic-backorder-toggle__switch" aria-hidden="true"></span>';
+		echo '<span class="wc-optic-backorder-toggle__text">' . esc_html__( 'Custom threshold', 'wc-optic' ) . '</span>';
+		echo '</label>';
+
+		echo '<div class="wc-optic-child-alert-custom-field wc-optic-child-backorder-custom-field">';
+		echo '<label class="screen-reader-text" for="wc_optic_child_' . esc_attr( $index_token ) . '_alert_qty">' . esc_html__( 'Custom alert threshold', 'wc-optic' ) . '</label>';
+		echo '<input type="number" class="wc-optic-child-alert-qty wc-optic-backorder-input" id="wc_optic_child_' . esc_attr( $index_token ) . '_alert_qty" name="' . esc_attr( $pf ) . '[alert_qty]" value="' . esc_attr( $custom_qty ) . '" min="0" step="1" ' . disabled( ! $alert_custom, true, false ) . ' />';
+		echo '<span class="wc-optic-child-backorder-custom-field__suffix">' . esc_html__( 'units or less', 'wc-optic' ) . '</span>';
+		echo '</div>';
+		echo '</div>';
+		echo '</div>';
+
+		if ( ! $alert_enabled ) {
+			echo '<p class="wc-optic-child-backorder-card__notice description">' . esc_html__( 'Stock alerts are disabled in global settings.', 'wc-optic' ) . '</p>';
+		}
+
+		echo '</div>';
+	}
+
+	/**
 	 * Whether the current admin screen is the new product screen.
 	 *
 	 * @return bool
@@ -407,7 +472,10 @@ class WC_Optic_Admin_Product {
 			true
 		);
 
+		echo '<div class="wc-optic-child-inventory-panels">';
 		self::render_child_backorder_fields( $config, $index_token );
+		self::render_child_alert_fields( $config, $index_token );
+		echo '</div>';
 
 		echo '<div class="wc-optic-child-fields-grid">';
 		foreach ( WC_Optic_SKU::META_KEYS as $type => $meta_key ) {

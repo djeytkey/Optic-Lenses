@@ -232,6 +232,13 @@
 		return parseInt( wcOpticAdmin.globalBackorderQty, 10 ) || 0;
 	}
 
+	function getGlobalAlertQty() {
+		if ( ! wcOpticAdmin || ! wcOpticAdmin.alertEnabled ) {
+			return 0;
+		}
+		return parseInt( wcOpticAdmin.globalAlertQty, 10 ) || 0;
+	}
+
 	function syncChildBackorderFields( $block ) {
 		if ( ! $block || ! $block.length ) {
 			return;
@@ -283,6 +290,57 @@
 		} );
 	}
 
+	function syncChildAlertFields( $block ) {
+		if ( ! $block || ! $block.length ) {
+			return;
+		}
+
+		var enabled = !!( wcOpticAdmin && wcOpticAdmin.alertEnabled );
+		var $row = $block.find( '.wc-optic-child-alert-row' );
+		var $display = $block.find( '.wc-optic-child-alert-display' );
+		var $source = $block.find( '.wc-optic-child-alert-card__source' );
+		var $custom = $block.find( '.wc-optic-child-alert-custom' );
+		var $qty = $block.find( '.wc-optic-child-alert-qty' );
+		var $customField = $block.find( '.wc-optic-child-alert-custom-field' );
+		var isCustom = $custom.is( ':checked' );
+		var globalLabel = ( wcOpticAdmin.i18n && wcOpticAdmin.i18n.alertGlobal ) || 'Global';
+		var customLabel = ( wcOpticAdmin.i18n && wcOpticAdmin.i18n.alertCustom ) || 'Custom';
+
+		if ( ! $row.length ) {
+			return;
+		}
+
+		$row.toggleClass( 'wc-optic-backorder-disabled', ! enabled );
+		$row.toggleClass( 'wc-optic-child-backorder-card--custom', enabled && isCustom );
+
+		if ( ! enabled ) {
+			$display.text( '0' );
+			$source.text( globalLabel );
+			$qty.prop( 'disabled', true );
+			$customField.addClass( 'wc-optic-is-hidden' );
+			return;
+		}
+
+		if ( isCustom ) {
+			$qty.prop( 'disabled', false );
+			$display.text( $qty.val() || '0' );
+			$source.text( customLabel );
+			$customField.removeClass( 'wc-optic-is-hidden' );
+			return;
+		}
+
+		$qty.prop( 'disabled', true );
+		$display.text( String( getGlobalAlertQty() ) );
+		$source.text( globalLabel );
+		$customField.addClass( 'wc-optic-is-hidden' );
+	}
+
+	function syncAllChildAlertFields() {
+		getChildBlocks().each( function () {
+			syncChildAlertFields( $( this ) );
+		} );
+	}
+
 	function initChildBlock( $block ) {
 		if ( ! $block || ! $block.length ) {
 			return;
@@ -292,6 +350,7 @@
 			initSelect2( $( this ) );
 		} );
 		syncChildBackorderFields( $block );
+		syncChildAlertFields( $block );
 		refreshBlockSkuPreview( $block );
 	}
 
@@ -346,6 +405,7 @@
 		initAllOpticSelect2();
 		renumberBlocks();
 		syncAllChildBackorderFields();
+		syncAllChildAlertFields();
 		refreshAllSkuPreviews();
 	}
 
@@ -406,6 +466,12 @@
 		} )
 		.on( 'input', '.wc-optic-child-backorder-qty', function () {
 			syncChildBackorderFields( $( this ).closest( '.wc-optic-child-config' ) );
+		} )
+		.on( 'change', '.wc-optic-child-alert-custom', function () {
+			syncChildAlertFields( $( this ).closest( '.wc-optic-child-config' ) );
+		} )
+		.on( 'input', '.wc-optic-child-alert-qty', function () {
+			syncChildAlertFields( $( this ).closest( '.wc-optic-child-config' ) );
 		} )
 		.on( 'input', '.wc-optic-child-stock-qty', function () {
 			syncChildBackorderFields( $( this ).closest( '.wc-optic-child-config' ) );

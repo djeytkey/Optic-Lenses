@@ -168,6 +168,8 @@ class WC_Optic_Admin_Settings {
 			$panel_class .= ' wc-optic-backorder-panel--enabled';
 		}
 
+		echo '<div class="wc-optic-inventory-panels-grid">';
+
 		echo '<div class="' . esc_attr( $panel_class ) . '" id="wc-optic-global-backorder-panel">';
 		echo '<div class="wc-optic-backorder-panel__header">';
 		echo '<span class="dashicons dashicons-backup wc-optic-backorder-panel__icon" aria-hidden="true"></span>';
@@ -203,6 +205,51 @@ class WC_Optic_Admin_Settings {
 		);
 		echo '</p>';
 		echo '</div>';
+		echo '</div>';
+
+		$alert_enabled = WC_Optic_Stock::is_alert_enabled();
+		$alert_qty     = WC_Optic_Stock::get_alert_qty();
+		$alert_panel   = 'wc-optic-backorder-panel wc-optic-stock-alert-panel';
+		if ( $alert_enabled ) {
+			$alert_panel .= ' wc-optic-backorder-panel--enabled';
+		}
+
+		echo '<div class="' . esc_attr( $alert_panel ) . '" id="wc-optic-global-stock-alert-panel">';
+		echo '<div class="wc-optic-backorder-panel__header">';
+		echo '<span class="dashicons dashicons-warning wc-optic-backorder-panel__icon" aria-hidden="true"></span>';
+		echo '<div class="wc-optic-backorder-panel__titles">';
+		echo '<h3 class="wc-optic-backorder-panel__title">' . esc_html__( 'Stock alerts', 'wc-optic' ) . '</h3>';
+		echo '<p class="description">' . esc_html__( 'Internal products at or below this physical stock level appear in Stock → Stock alerts. Override per internal product with Custom on the product edit screen.', 'wc-optic' ) . '</p>';
+		echo '</div>';
+		echo '</div>';
+
+		echo '<div class="wc-optic-backorder-panel__toggle-row">';
+		echo '<label class="wc-optic-backorder-toggle" for="wc_optic_global_stock_alert_enabled">';
+		echo '<input type="checkbox" name="wc_optic_global_stock_alert_enabled" id="wc_optic_global_stock_alert_enabled" class="wc-optic-backorder-toggle__input" value="1" ' . checked( $alert_enabled, true, false ) . ' />';
+		echo '<span class="wc-optic-backorder-toggle__switch" aria-hidden="true"></span>';
+		echo '<span class="wc-optic-backorder-toggle__text">' . esc_html__( 'Enable stock alerts', 'wc-optic' ) . '</span>';
+		echo '</label>';
+		echo '</div>';
+
+		echo '<div class="wc-optic-backorder-panel__details wc-optic-global-stock-alert-qty-wrap' . ( $alert_enabled ? '' : ' wc-optic-is-hidden' ) . '">';
+		echo '<label class="wc-optic-backorder-panel__qty-label" for="wc_optic_global_stock_alert_qty">' . esc_html__( 'Alert threshold per internal product', 'wc-optic' ) . '</label>';
+		echo '<div class="wc-optic-backorder-panel__qty-row">';
+		echo '<input type="number" name="wc_optic_global_stock_alert_qty" id="wc_optic_global_stock_alert_qty" class="wc-optic-backorder-input" min="0" step="1" value="' . esc_attr( (string) $alert_qty ) . '" />';
+		echo '<span class="wc-optic-backorder-panel__qty-suffix">' . esc_html__( 'units or less', 'wc-optic' ) . '</span>';
+		echo '</div>';
+		echo '<p class="wc-optic-backorder-panel__example description">';
+		echo esc_html(
+			sprintf(
+				/* translators: 1: stock example, 2: alert threshold example */
+				__( 'Example: stock %1$d with threshold %2$d → alert shown.', 'wc-optic' ),
+				3,
+				max( 1, $alert_qty )
+			)
+		);
+		echo '</p>';
+		echo '</div>';
+		echo '</div>';
+
 		echo '</div>';
 
 		echo '<p><button type="submit" class="button button-secondary">' . esc_html__( 'Save global settings', 'wc-optic' ) . '</button></p>';
@@ -710,10 +757,14 @@ class WC_Optic_Admin_Settings {
 		$backorder_qty     = $backorder_enabled && isset( $_POST['wc_optic_global_backorder_qty'] )
 			? WC_Optic_SKU::set_global_backorder_qty( wp_unslash( $_POST['wc_optic_global_backorder_qty'] ) )
 			: WC_Optic_SKU::get_global_backorder_qty();
+		$alert_enabled = WC_Optic_Stock::set_alert_enabled( isset( $_POST['wc_optic_global_stock_alert_enabled'] ) ? wp_unslash( $_POST['wc_optic_global_stock_alert_enabled'] ) : '' );
+		$alert_qty     = $alert_enabled && isset( $_POST['wc_optic_global_stock_alert_qty'] )
+			? WC_Optic_Stock::set_alert_qty( wp_unslash( $_POST['wc_optic_global_stock_alert_qty'] ) )
+			: WC_Optic_Stock::get_alert_qty();
 
 		add_action(
 			'admin_notices',
-			function () use ( $backorder_enabled, $backorder_qty ) {
+			function () use ( $backorder_enabled, $backorder_qty, $alert_enabled, $alert_qty ) {
 				echo '<div class="notice notice-success is-dismissible"><p>';
 				echo esc_html__( 'Global optic settings saved.', 'wc-optic' );
 				if ( $backorder_enabled ) {
@@ -728,6 +779,18 @@ class WC_Optic_Admin_Settings {
 				} else {
 					echo ' ';
 					echo esc_html__( 'Backorder disabled.', 'wc-optic' );
+				}
+				echo ' ';
+				if ( $alert_enabled ) {
+					echo esc_html(
+						sprintf(
+							/* translators: %d: stock alert threshold */
+							__( 'Stock alerts enabled (%d unit(s) or less).', 'wc-optic' ),
+							$alert_qty
+						)
+					);
+				} else {
+					echo esc_html__( 'Stock alerts disabled.', 'wc-optic' );
 				}
 				echo '</p></div>';
 			}

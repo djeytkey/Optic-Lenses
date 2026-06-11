@@ -291,7 +291,39 @@
 	display: none !important;
 }
 
-/* —— Backorder (settings + product) —— */
+/* —— Backorder + stock alerts (settings + product) —— */
+.wc-optic-inventory-panels-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 1rem;
+	margin-top: 1.25em;
+}
+
+.wc-optic-inventory-panels-grid > .wc-optic-backorder-panel {
+	margin: 0;
+}
+
+#optic_product_data_panel .wc-optic-child-inventory-panels {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.85rem;
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 100%;
+	margin: 0.35rem 0 0.85rem;
+}
+
+#optic_product_data_panel .wc-optic-child-inventory-panels .wc-optic-child-backorder-card {
+	margin: 0;
+}
+
+@media (max-width: 960px) {
+	.wc-optic-inventory-panels-grid,
+	#optic_product_data_panel .wc-optic-child-inventory-panels {
+		grid-template-columns: 1fr;
+	}
+}
+
 .wc-optic-backorder-panel {
 	margin: 1.25em 0 0;
 	padding: 1em 1.15em 1.15em;
@@ -593,4 +625,300 @@
 
 #optic_product_data_panel .wc-optic-child-backorder-card.wc-optic-backorder-disabled .wc-optic-child-backorder-card__controls {
 	display: none;
+}
+
+/* Stock management */
+.wc-optic-stock-wrap .nav-tab-wrapper {
+	margin-bottom: 1.25em;
+}
+
+.wc-optic-stock-tab-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 18px;
+	margin-left: 0.35em;
+	padding: 0 6px;
+	border-radius: 999px;
+	background: #d63638;
+	color: #fff;
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1;
+	vertical-align: middle;
+}
+
+/* Stock management — hierarchical collapsible table */
+.wc-optic-stock-mgmt {
+	margin-top: 1em;
+}
+
+.wc-optic-stock-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 0.75rem;
+	margin-bottom: 1rem;
+}
+
+.wc-optic-stock-search {
+	flex: 1 1 220px;
+	max-width: 360px;
+	min-height: 36px;
+	padding: 0 12px;
+	border: 1px solid #8c8f94;
+	border-radius: 6px;
+	background: #fff;
+}
+
+.wc-optic-stock-toolbar__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.wc-optic-stock-search-empty {
+	margin: 0 0 1rem;
+	color: #646970;
+}
+
+.wc-optic-stock-table--management {
+	border: 1px solid #c3c4c7;
+	border-radius: 8px;
+	overflow: hidden;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.wc-optic-stock-table--management thead th {
+	background: #f0f0f1;
+	border-bottom: 1px solid #c3c4c7;
+}
+
+.wc-optic-stock-table--management .wc-optic-stock-col-expand {
+	width: 52px;
+	text-align: center;
+}
+
+.wc-optic-stock-parent {
+	cursor: pointer;
+	transition: background-color 0.15s ease;
+}
+
+.wc-optic-stock-parent:hover {
+	background: #f6f7f7;
+}
+
+.wc-optic-stock-parent--expanded {
+	background: #f6f9ff;
+}
+
+.wc-optic-stock-parent--expanded:hover {
+	background: #eef5ff;
+}
+
+.wc-optic-stock-parent__name {
+	font-weight: 600;
+}
+
+.wc-optic-stock-parent__count {
+	display: inline-block;
+	margin-left: 0.35em;
+	padding: 0.1em 0.5em;
+	border-radius: 999px;
+	background: #e8edf3;
+	color: #50575e;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.wc-optic-stock-expand {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 34px;
+	height: 34px;
+	margin: 0;
+	padding: 0;
+	border: 1px solid #c3c4c7;
+	border-radius: 8px;
+	background: #fff;
+	cursor: pointer;
+	transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+}
+
+.wc-optic-stock-expand:hover {
+	border-color: #2271b1;
+	color: #2271b1;
+}
+
+.wc-optic-stock-parent--expanded .wc-optic-stock-expand {
+	border-color: #2271b1;
+	background: #fff;
+	color: #2271b1;
+}
+
+.wc-optic-stock-expand .dashicons {
+	font-size: 18px;
+	width: 18px;
+	height: 18px;
+	transition: transform 0.2s ease;
+}
+
+.wc-optic-stock-parent--expanded .wc-optic-stock-expand .dashicons {
+	transform: rotate(180deg);
+}
+
+.wc-optic-stock-children-cell {
+	padding: 0 !important;
+	background: #f9fafb;
+	border-top: 0;
+}
+
+.wc-optic-stock-children-panel {
+	padding: 0.85rem 0.85rem 0.85rem 2.5rem;
+	border-top: 1px solid #dcdcde;
+	border-left: 3px solid #2271b1;
+}
+
+.wc-optic-stock-children-table {
+	margin: 0;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	overflow: hidden;
+	background: #fff;
+	box-shadow: none;
+}
+
+.wc-optic-stock-children-table thead th {
+	background: #f6f7f7;
+	font-size: 12px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.wc-optic-stock-children-table tbody td {
+	vertical-align: middle;
+}
+
+.wc-optic-stock-child__actions {
+	white-space: nowrap;
+}
+
+/* DataTables — Stock alerts tab only */
+.wc-optic-datatable-wrap {
+	margin-top: 1em;
+}
+
+.wc-optic-datatable-wrap .dataTables_wrapper {
+	margin-top: 0.75em;
+}
+
+.wc-optic-datatable-wrap .dataTables_filter input,
+.wc-optic-datatable-wrap .dataTables_length select {
+	min-height: 30px;
+	margin: 0 0.35em;
+}
+
+.wc-optic-datatable-wrap table.dataTable {
+	border-collapse: collapse;
+}
+
+.wc-optic-datatable-wrap table.dataTable thead th {
+	font-weight: 600;
+}
+
+.wc-optic-datatable-wrap table.dataTable.stripe tbody tr.odd {
+	background: #f6f7f7;
+}
+
+.wc-optic-stock-child--low .wc-optic-stock-qty-value {
+	color: #b32d2e;
+	font-weight: 700;
+}
+
+.wc-optic-stock-low-badge {
+	display: inline-block;
+	margin-left: 0.35em;
+	padding: 0.1em 0.45em;
+	border-radius: 999px;
+	background: #fcf0f1;
+	color: #b32d2e;
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+}
+
+.wc-optic-stock-badge {
+	display: inline-block;
+	padding: 0.15em 0.55em;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 700;
+}
+
+.wc-optic-stock-badge--custom {
+	background: #dbeafe;
+	color: #1d4f91;
+}
+
+.wc-optic-stock-badge--global {
+	background: #e8edf3;
+	color: #3c434a;
+}
+
+.wc-optic-stock-alert__qr .wc-optic-qr {
+	--wc-optic-qr-size: 80px;
+}
+
+.wc-optic-stock-alert__qr .wc-optic-qr__sku {
+	display: none;
+}
+
+.wc-optic-restock-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 100100;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.wc-optic-restock-modal__backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(0, 0, 0, 0.45);
+}
+
+.wc-optic-restock-modal__panel {
+	position: relative;
+	z-index: 1;
+	width: min(420px, calc(100vw - 2rem));
+	padding: 1.25rem 1.5rem;
+	border-radius: 8px;
+	background: #fff;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+}
+
+.wc-optic-restock-modal__title {
+	margin: 0 0 0.75rem;
+	padding: 0;
+	font-size: 1.15rem;
+}
+
+.wc-optic-restock-modal__sku {
+	margin: 0 0 1rem;
+}
+
+.wc-optic-restock-modal__input {
+	width: 120px;
+	min-height: 34px;
+	margin-top: 0.35rem;
+}
+
+.wc-optic-restock-modal__message {
+	min-height: 1.25em;
+	margin: 0.75rem 0 0;
+	color: #2271b1;
+	font-weight: 600;
 }

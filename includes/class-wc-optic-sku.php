@@ -770,6 +770,8 @@ class WC_Optic_SKU {
 			'backorder_custom'   => ! empty( $raw['backorder_custom'] ),
 			'backorder_qty'      => '',
 			'backorder_consumed' => isset( $raw['backorder_consumed'] ) ? (string) max( 0, absint( $raw['backorder_consumed'] ) ) : '0',
+			'alert_custom'       => ! empty( $raw['alert_custom'] ),
+			'alert_qty'          => '',
 			'catalog'            => array(),
 			'powers'             => array(),
 			'sku'                => '',
@@ -783,6 +785,9 @@ class WC_Optic_SKU {
 		}
 		if ( $out['backorder_custom'] && isset( $raw['backorder_qty'] ) && '' !== trim( (string) $raw['backorder_qty'] ) ) {
 			$out['backorder_qty'] = (string) absint( wp_unslash( $raw['backorder_qty'] ) );
+		}
+		if ( $out['alert_custom'] && isset( $raw['alert_qty'] ) && '' !== trim( (string) $raw['alert_qty'] ) ) {
+			$out['alert_qty'] = (string) absint( wp_unslash( $raw['alert_qty'] ) );
 		}
 
 		foreach ( self::META_KEYS as $type => $meta_key ) {
