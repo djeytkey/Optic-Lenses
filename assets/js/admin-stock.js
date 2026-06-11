@@ -4,10 +4,20 @@
 	var cfg = window.wcOpticStock || {};
 	var i18n = cfg.i18n || {};
 	var dtLang = cfg.dt || {};
-	var $root = $( '#wc-optic-stock-root' );
-	var $modal = $( '#wc-optic-restock-modal' );
 	var activeRow = null;
 	var alertsTable = null;
+
+	function getRoot() {
+		return $( '#wc-optic-stock-root' );
+	}
+
+	function getModal() {
+		return $( '#wc-optic-restock-modal' );
+	}
+
+	function rowData( $row, key ) {
+		return $row.attr( 'data-' + key ) || '';
+	}
 
 	function getDataTableDefaults() {
 		return {
@@ -53,6 +63,9 @@
 	}
 
 	function toggleRow( $parent ) {
+		if ( ! $parent || ! $parent.length ) {
+			return;
+		}
 		var expanded = $parent.hasClass( 'wc-optic-stock-parent--expanded' );
 		setRowExpanded( $parent, ! expanded );
 	}
@@ -84,15 +97,20 @@
 
 		$mgmt.find( '.wc-optic-stock-parent' ).each( function () {
 			var $parent = $( this );
-			var blob = String( $parent.data( 'search' ) || '' );
-			var $children = $(
-				'#' + $parent.find( '.wc-optic-stock-expand' ).attr( 'aria-controls' )
-			);
+			var blob = String( $parent.attr( 'data-search' ) || '' );
+			var controls = $parent
+				.find( '.wc-optic-stock-expand' )
+				.attr( 'aria-controls' );
+			var $children = controls ? $( '#' + controls ) : $();
 			var match = ! term || blob.indexOf( term ) !== -1;
 
 			$parent.toggleClass( 'wc-optic-is-hidden', ! match );
 			if ( $children.length ) {
-				$children.toggleClass( 'wc-optic-is-hidden', ! match || ! $parent.hasClass( 'wc-optic-stock-parent--expanded' ) );
+				$children.toggleClass(
+					'wc-optic-is-hidden',
+					! match ||
+						! $parent.hasClass( 'wc-optic-stock-parent--expanded' )
+				);
 			}
 
 			if ( match ) {
@@ -107,17 +125,21 @@
 
 	function openModal( $row ) {
 		activeRow = $row;
-		var sku = $row.data( 'sku' ) || '';
+		var sku = rowData( $row, 'sku' );
+		var $modal = getModal();
+
 		$modal.find( '.wc-optic-restock-modal__sku code' ).text( sku );
 		$modal.find( '#wc-optic-restock-qty' ).val( 1 );
 		$modal.find( '.wc-optic-restock-modal__message' ).text( '' );
 		$modal.removeClass( 'wc-optic-is-hidden' ).removeAttr( 'hidden' );
-		$( '#wc-optic-restock-qty' ).trigger( 'focus' );
+		$modal.find( '#wc-optic-restock-qty' ).trigger( 'focus' );
 	}
 
 	function closeModal() {
 		activeRow = null;
-		$modal.addClass( 'wc-optic-is-hidden' ).attr( 'hidden', 'hidden' );
+		getModal()
+			.addClass( 'wc-optic-is-hidden' )
+			.attr( 'hidden', 'hidden' );
 	}
 
 	function updateQtyCells( productId, childId, stock, isLow ) {
@@ -162,8 +184,9 @@
 			return;
 		}
 
-		var productId = activeRow.data( 'product-id' );
-		var childId = activeRow.data( 'child-id' );
+		var productId = rowData( activeRow, 'product-id' );
+		var childId = rowData( activeRow, 'child-id' );
+		var $modal = getModal();
 		var $message = $modal.find( '.wc-optic-restock-modal__message' );
 		var $confirm = $modal.find( '.wc-optic-restock-modal__confirm' );
 
@@ -194,7 +217,7 @@
 
 				if (
 					( cfg.activeTab === 'alerts' ||
-						$root.data( 'active-tab' ) === 'alerts' ) &&
+						getRoot().data( 'active-tab' ) === 'alerts' ) &&
 					! response.data.is_low
 				) {
 					removeAlertRow( activeRow );
@@ -218,71 +241,114 @@
 			} );
 	}
 
-	$root.on( 'click', '.wc-optic-stock-expand', function ( event ) {
-		event.preventDefault();
-		event.stopPropagation();
-		toggleRow( $( this ).closest( '.wc-optic-stock-parent' ) );
-	} );
-
-	$root.on( 'click', '.wc-optic-stock-parent', function ( event ) {
-		if (
-			$( event.target ).closest( 'a, button, .wc-optic-stock-expand' )
-				.length
-		) {
-			return;
-		}
-		if ( ! $( this ).find( '.wc-optic-stock-expand' ).length ) {
-			return;
-		}
-		toggleRow( $( this ) );
-	} );
-
-	$root.on( 'click', '.wc-optic-stock-expand-all', function ( event ) {
-		event.preventDefault();
-		expandAllParents();
-	} );
-
-	$root.on( 'click', '.wc-optic-stock-collapse-all', function ( event ) {
-		event.preventDefault();
-		collapseAllParents();
-	} );
-
-	$root.on( 'input', '#wc-optic-stock-search', function () {
-		filterManagementTable( $( this ).val() );
-	} );
-
-	$root.on( 'click', '.wc-optic-restock-btn', function () {
-		openModal( $( this ).closest( 'tr' ) );
-	} );
-
-	$modal.on(
-		'click',
-		'.wc-optic-restock-modal__cancel, .wc-optic-restock-modal__backdrop',
-		function () {
-			closeModal();
-		}
-	);
-
-	$modal.on( 'click', '.wc-optic-restock-modal__confirm', function () {
-		var qty = parseInt( $( '#wc-optic-restock-qty' ).val(), 10 );
-		if ( ! qty || qty < 1 ) {
-			$modal.find( '#wc-optic-restock-qty' ).val( 1 ).trigger( 'focus' );
-			return;
-		}
-		restock( qty );
-	} );
-
-	$( document ).on( 'keydown', function ( event ) {
-		if (
-			event.key === 'Escape' &&
-			! $modal.hasClass( 'wc-optic-is-hidden' )
-		) {
-			closeModal();
-		}
-	} );
+	function bindEvents() {
+		$( document.body )
+			.off( '.wcOpticStock' )
+			.on(
+				'click.wcOpticStock',
+				'#wc-optic-stock-root .wc-optic-stock-expand',
+				function ( event ) {
+					event.preventDefault();
+					event.stopPropagation();
+					toggleRow( $( this ).closest( '.wc-optic-stock-parent' ) );
+				}
+			)
+			.on(
+				'click.wcOpticStock',
+				'#wc-optic-stock-root .wc-optic-stock-parent',
+				function ( event ) {
+					if (
+						$( event.target ).closest(
+							'a, button, .wc-optic-stock-expand'
+						).length
+					) {
+						return;
+					}
+					if ( ! $( this ).find( '.wc-optic-stock-expand' ).length ) {
+						return;
+					}
+					toggleRow( $( this ) );
+				}
+			)
+			.on(
+				'click.wcOpticStock',
+				'#wc-optic-stock-root .wc-optic-stock-expand-all',
+				function ( event ) {
+					event.preventDefault();
+					expandAllParents();
+				}
+			)
+			.on(
+				'click.wcOpticStock',
+				'#wc-optic-stock-root .wc-optic-stock-collapse-all',
+				function ( event ) {
+					event.preventDefault();
+					collapseAllParents();
+				}
+			)
+			.on( 'input.wcOpticStock', '#wc-optic-stock-root #wc-optic-stock-search', function () {
+				filterManagementTable( $( this ).val() );
+			} )
+			.on(
+				'click.wcOpticStock',
+				'#wc-optic-stock-root .wc-optic-restock-btn',
+				function ( event ) {
+					event.preventDefault();
+					openModal(
+						$( this ).closest(
+							'tr.wc-optic-stock-child, tr.wc-optic-stock-alert'
+						)
+					);
+				}
+			)
+			.on(
+				'click.wcOpticStock',
+				'#wc-optic-restock-modal .wc-optic-restock-modal__cancel, #wc-optic-restock-modal .wc-optic-restock-modal__backdrop',
+				function ( event ) {
+					event.preventDefault();
+					closeModal();
+				}
+			)
+			.on(
+				'click.wcOpticStock',
+				'#wc-optic-restock-modal .wc-optic-restock-modal__confirm',
+				function ( event ) {
+					event.preventDefault();
+					var qty = parseInt(
+						$( '#wc-optic-restock-qty' ).val(),
+						10
+					);
+					if ( ! qty || qty < 1 ) {
+						getModal()
+							.find( '#wc-optic-restock-qty' )
+							.val( 1 )
+							.trigger( 'focus' );
+						return;
+					}
+					restock( qty );
+				}
+			)
+			.on( 'keydown.wcOpticStock', function ( event ) {
+				if (
+					event.key === 'Escape' &&
+					! getModal().hasClass( 'wc-optic-is-hidden' )
+				) {
+					closeModal();
+				}
+			} );
+	}
 
 	$( function () {
-		if ( cfg.activeTab === 'alerts' || $root.data( 'active-tab' ) === 'alerts' ) {
+		if ( ! getRoot().length ) {
+			return;
+		}
+
+		bindEvents();
+
+		if (
+			cfg.activeTab === 'alerts' ||
+			getRoot().data( 'active-tab' ) === 'alerts'
+		) {
 			initAlertsDataTable();
 		}
 	} );

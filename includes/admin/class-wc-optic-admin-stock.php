@@ -33,8 +33,9 @@ class WC_Optic_Admin_Stock {
 		$is_alerts = 'alerts' === $tab;
 
 		wp_enqueue_style( 'dashicons' );
+		wp_enqueue_script( 'jquery' );
 
-		$style_deps = array();
+		$style_deps  = array();
 		$script_deps = array( 'jquery' );
 
 		if ( $is_alerts ) {
@@ -61,11 +62,12 @@ class WC_Optic_Admin_Stock {
 			$style_deps,
 			WC_OPTIC_VERSION
 		);
+		$stock_js = WC_OPTIC_PLUGIN_DIR . 'assets/js/admin-stock.js';
 		wp_enqueue_script(
 			'wc-optic-admin-stock',
 			WC_OPTIC_PLUGIN_URL . 'assets/js/admin-stock.js',
 			$script_deps,
-			WC_OPTIC_VERSION,
+			is_readable( $stock_js ) ? (string) filemtime( $stock_js ) : WC_OPTIC_VERSION,
 			true
 		);
 		wp_localize_script(
@@ -223,8 +225,16 @@ class WC_Optic_Admin_Stock {
 			$product_id   = (int) $parent['product_id'];
 			$child_count  = (int) $parent['child_count'];
 			$has_children = $child_count > 0;
-			$row_id       = 'wc-optic-stock-parent-' . $product_id;
-			$search_blob  = strtolower( (string) $parent['name'] . ' ' . (string) $parent['sku'] );
+			$row_id      = 'wc-optic-stock-parent-' . $product_id;
+			$search_bits = array(
+				(string) $parent['name'],
+				(string) $parent['sku'],
+			);
+			foreach ( $parent['children'] as $child_row ) {
+				$search_bits[] = (string) ( $child_row['sku'] ?? '' );
+				$search_bits[] = (string) ( $child_row['powers'] ?? '' );
+			}
+			$search_blob = strtolower( implode( ' ', array_filter( $search_bits ) ) );
 
 			echo '<tr class="wc-optic-stock-parent" id="' . esc_attr( $row_id ) . '"';
 			echo ' data-product-id="' . esc_attr( (string) $product_id ) . '"';
