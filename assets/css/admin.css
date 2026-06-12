@@ -820,6 +820,12 @@
 	white-space: nowrap;
 }
 
+.wc-optic-stock-children-table .wc-optic-stock-col--center,
+.wc-optic-stock-table--alerts .wc-optic-stock-col--center,
+.wc-optic-datatable-wrap table.dataTable .wc-optic-stock-col--center {
+	text-align: center !important;
+}
+
 /* DataTables — Stock alerts tab only */
 .wc-optic-datatable-wrap {
 	margin-top: 1em;
@@ -841,6 +847,25 @@
 
 .wc-optic-datatable-wrap table.dataTable thead th {
 	font-weight: 600;
+}
+
+.wc-optic-stock-table--alerts.wc-optic-stock-children-table {
+	margin: 0;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	overflow: hidden;
+	background: #fff;
+}
+
+.wc-optic-stock-table--alerts.wc-optic-stock-children-table thead th {
+	background: #f6f7f7;
+	font-size: 12px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.wc-optic-stock-table--alerts.wc-optic-stock-children-table tbody td {
+	vertical-align: middle;
 }
 
 .wc-optic-datatable-wrap table.dataTable.stripe tbody tr.odd {

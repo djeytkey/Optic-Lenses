@@ -202,22 +202,15 @@ class WC_Optic_Stock {
 					continue;
 				}
 
-				$sku   = (string) ( $config['sku'] ?? '' );
-				$stock = WC_Optic_SKU::get_child_stock_qty( $config );
-
+				$sku = (string) ( $config['sku'] ?? '' );
 				$row = self::format_child_row( $product, $config, $division );
 
-				$alerts[] = array(
-					'product_id'         => $product->get_id(),
-					'product_name'       => $product->get_name(),
-					'child_id'           => (string) ( $config['id'] ?? '' ),
-					'sku'                => $sku,
-					'stock'              => null === $stock ? 0 : (int) $stock,
-					'powers'             => WC_Optic_SKU::child_display_label( $config, $division ),
-					'qr_html'            => WC_Optic_QR::render_admin_block( $sku, '', 80 ),
-					'backorder_units'    => (int) $row['backorder_units'],
-					'backorder_consumed' => (int) $row['backorder_consumed'],
-					'backorder_custom'   => ! empty( $row['backorder_custom'] ),
+				$alerts[] = array_merge(
+					$row,
+					array(
+						'product_name' => $product->get_name(),
+						'qr_html'      => WC_Optic_QR::render_admin_block( $sku, '', 80 ),
+					)
 				);
 			}
 		}

@@ -439,10 +439,10 @@
 			],
 			language: dtLang,
 			autoWidth: false,
-			order: [ [ 4, 'asc' ], [ 3, 'asc' ] ],
+			order: [ [ 4, 'asc' ], [ 1, 'asc' ] ],
 			columnDefs: [
-				{ orderable: false, targets: [ 0, 5 ] },
-				{ type: 'num', targets: [ 4 ] },
+				{ orderable: false, targets: [ 0, 10 ] },
+				{ type: 'num', targets: [ 4, 5, 7 ] },
 			],
 		} );
 	}
