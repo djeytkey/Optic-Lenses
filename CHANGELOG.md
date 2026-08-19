@@ -4,6 +4,13 @@ Toutes les modifications notables de **Alwaleed Optics Products** sont document�
 
 Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/).
 
+## [1.2.5] — 2026-08-19
+
+### Corrigé
+
+- **Fatal `Class "WC_Optic_Catalog" not found`** à l’activation : l’autoloader est désormais enregistré dès le chargement du plugin (plus seulement sur `plugins_loaded`), car `WC_Optic_Divisions::maybe_seed_defaults()` appelle le catalogue avant ce hook.
+- `WC_Optic_Autoload::register()` est idempotent ; `get_available_powers()` a un fallback SPH/CYL/AXIS/ADD si le catalogue n’est pas encore chargé.
+
 ## [1.2.4] — 2026-06-11
 
 ### Ajouté

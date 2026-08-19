@@ -3,7 +3,7 @@
  * Plugin Name: Alwaleed Optics Products
  * Plugin URI: https://www.moroccoder.com/
  * Description: Custom WooCommerce product type for optical/lens products with prescription logic, dynamic SKU, and global catalog.
- * Version: 1.2.4
+ * Version: 1.2.5
  * Author: Tarik BOUKJIJ
  * Text Domain: wc-optic
  * Domain Path: /languages
@@ -22,7 +22,7 @@
 defined( 'ABSPATH' ) || exit;
 
 if ( ! defined( 'WC_OPTIC_VERSION' ) ) {
-	define( 'WC_OPTIC_VERSION', '1.2.4' );
+	define( 'WC_OPTIC_VERSION', '1.2.5' );
 	define( 'WC_OPTIC_PLUGIN_FILE', __FILE__ );
 	define( 'WC_OPTIC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 	define( 'WC_OPTIC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -37,8 +37,8 @@ if ( is_readable( $wc_optic_autoload ) ) {
 }
 
 require_once WC_OPTIC_PLUGIN_DIR . 'includes/class-wc-optic-autoload.php';
-// Activation runs before plugins_loaded; autoloader is not registered yet.
-require_once WC_OPTIC_PLUGIN_DIR . 'includes/class-wc-optic-database.php';
+// Register immediately: activation runs before plugins_loaded and needs WC_Optic_Catalog.
+WC_Optic_Autoload::register();
 
 register_activation_hook( __FILE__, 'wc_optic_activate_plugin' );
 
@@ -47,7 +47,6 @@ register_activation_hook( __FILE__, 'wc_optic_activate_plugin' );
  */
 function wc_optic_activate_plugin() {
 	WC_Optic_Database::activate();
-	require_once WC_OPTIC_PLUGIN_DIR . 'includes/class-wc-optic-divisions.php';
 	WC_Optic_Divisions::maybe_seed_defaults();
 	update_option( 'wc_optic_pending_wpml_config', '1', false );
 }

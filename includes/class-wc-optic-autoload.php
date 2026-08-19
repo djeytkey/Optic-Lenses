@@ -13,9 +13,14 @@ defined( 'ABSPATH' ) || exit;
 class WC_Optic_Autoload {
 
 	/**
-	 * Register spl autoload.
+	 * Register spl autoload (idempotent).
 	 */
 	public static function register() {
+		static $registered = false;
+		if ( $registered ) {
+			return;
+		}
+		$registered = true;
 		spl_autoload_register( array( __CLASS__, 'autoload' ) );
 	}
 

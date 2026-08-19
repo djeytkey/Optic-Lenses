@@ -169,7 +169,10 @@ class WC_Optic_Divisions {
 	 * @return string[]
 	 */
 	public static function get_available_powers() {
-		return WC_Optic_Catalog::get_power_types();
+		if ( class_exists( 'WC_Optic_Catalog' ) ) {
+			return WC_Optic_Catalog::get_power_types();
+		}
+		return array( 'sph', 'cyl', 'axis', 'add' );
 	}
 
 	/**

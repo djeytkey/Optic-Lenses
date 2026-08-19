@@ -1,8 +1,8 @@
 # Session Handoff — Optic-Lenses (Alwaleed Optics Products)
 
-**Date :** 2026-06-11 (dernière mise à jour)  
+**Date :** 2026-08-19 (dernière mise à jour)  
 **Plugin :** `wp-content/plugins/Optic-Lenses`  
-**Version déclarée :** 1.2.4 (`woocommerce-optic-product.php`, `composer.json`, `CHANGELOG.md`)  
+**Version déclarée :** 1.2.5 (`woocommerce-optic-product.php`, `composer.json`, `CHANGELOG.md`)  
 **Thème cible boutique :** Flatsome (parent ou enfant)
 
 Ce document résume tout le travail réalisé sur le plugin (sessions Cursor cumulées), pour permettre à un autre développeur (ou une future session IA) de reprendre sans perte de contexte.
@@ -13,7 +13,14 @@ Ce document résume tout le travail réalisé sur le plugin (sessions Cursor cum
 
 ## 1. Résumé exécutif
 
-### Session 2026-06-11 (courante)
+### Session 2026-08-19 (courante)
+
+1. **Fix fatal activation** — `Class "WC_Optic_Catalog" not found` dans `class-wc-optic-divisions.php:172` : l’autoloader est enregistré dès le chargement du fichier principal, pas seulement sur `plugins_loaded`.
+2. **`WC_Optic_Autoload::register()` idempotent** — évite un double enregistrement SPL.
+3. **Fallback puissances** — `WC_Optic_Divisions::get_available_powers()` retourne SPH/CYL/AXIS/ADD si le catalogue n’est pas chargé.
+4. **Version** — bump **1.2.5**.
+
+### Session 2026-06-11 (précédente)
 
 1. **Suivi inventaire — page Stock** — sous-menu **Alwaleed Optics → Stock** avec 2 onglets : gestion hiérarchique (parent + internes repliables) et alertes stock bas.
 2. **Restock AJAX** — bouton Restock par interne → popup quantité → incrémente `stock_qty` via `WC_Optic_Stock::restock_child()` ; option **Reset backorder** (case décochée par défaut) remet `backorder_consumed` à 0 (libellé Global vs Custom selon l’interne).
@@ -333,6 +340,13 @@ WC_Optic_Stock::restock_child( $product_id, $child_id, $qty, $reset_backorder = 
 
 **Fichiers :** `class-wc-optic-stock.php`, `class-wc-optic-admin-stock.php`, `admin-stock.js`, `admin.css`, `class-wc-optic-ajax.php`, `class-wc-optic-admin-menu.php`, `class-wc-optic-admin-settings.php`.
 
+### 2.11 Autoload à l’activation (session 2026-08-19)
+
+- **Problème :** `register_activation_hook` s’exécute avant `plugins_loaded`. `maybe_seed_defaults()` → `get_default_divisions()` → `sanitize_powers()` → `get_available_powers()` → `WC_Optic_Catalog::get_power_types()` alors que l’autoloader n’était pas encore enregistré.
+- **Correctif :** `WC_Optic_Autoload::register()` appelé immédiatement après `require` du fichier autoload dans `woocommerce-optic-product.php`.
+- **Méthodes :** `WC_Optic_Autoload::register()`, `WC_Optic_Divisions::get_available_powers()`, `WC_Optic_Divisions::maybe_seed_defaults()`.
+- **Fichiers :** `woocommerce-optic-product.php`, `includes/class-wc-optic-autoload.php`, `includes/class-wc-optic-divisions.php`.
+
 ---
 
 ## 3. Architecture & fichiers modifiés
@@ -355,7 +369,9 @@ WC_Optic_Stock::restock_child( $product_id, $child_id, $qty, $reset_backorder = 
 | `class-wc-optic-frontend.php` | Puissance en cascade, stock HTML ; code child-choice retiré |
 | `class-wc-optic-flatsome.php` | Détection Flatsome + assets panier/checkout |
 | `class-wc-optic-plugin.php` | `WC_Optic_Admin_Menu::hooks()`, Flatsome, etc. |
-| `class-wc-optic-autoload.php` | Map classes admin + Flatsome |
+| `class-wc-optic-autoload.php` | Map classes ; `register()` immédiat + idempotent (fix 1.2.5) |
+| `class-wc-optic-divisions.php` | Divisions ; `get_available_powers()` fallback si catalogue absent |
+| `woocommerce-optic-product.php` | Bootstrap : autoload dès le chargement (plus de require manuel Database/Divisions à l’activation) |
 
 ### Templates
 
@@ -550,20 +566,27 @@ Domaine : `wc-optic` — traduction WPML via String Translation si actif.
 - [ ] Commande qui dépasse le stock physique → `backorder_consumed` incrémenté, stock physique à 0
 - [ ] Annulation commande → restauration stock + backorder_consumed
 
+### Activation plugin (1.2.5)
+
+- [ ] Désactiver puis réactiver le plugin : pas d’erreur fatale `WC_Optic_Catalog not found`
+- [ ] Après activation : option `wc_optic_divisions` créée (4 divisions par défaut)
+- [ ] Site (front + admin) charge sans fatal ; Settings → Divisions affiche SPH/CYL/AXIS/ADD
+
 ---
 
 ## 9. Points d’attention / limites connues
 
 1. **`find_no_power_child()`** retourne le **premier** enfant +0.00 trouvé — si plusieurs variantes no-power (packs différents), seul le premier est utilisé en mode No power.
 2. **Flatsome** : styles basés sur la structure WooCommerce standard ; un override template Flatsome très custom peut nécessiter des ajustements CSS.
-3. **CHANGELOG.md** mis à jour à chaque bump — dernière entrée **[1.2.4] — 2026-06-11** (voir aussi [1.2.3], [1.2.2], [1.2.1], [1.2.0]).
-4. **Version plugin** : **1.2.4** (`woocommerce-optic-product.php`, `composer.json`). Convention : toujours synchroniser `CHANGELOG.md` + `SESSION_HANDOFF.md` lors d’un changement de version.
+3. **CHANGELOG.md** mis à jour à chaque bump — dernière entrée **[1.2.5] — 2026-08-19** (voir aussi [1.2.4], [1.2.3], [1.2.2], [1.2.1], [1.2.0]).
+4. **Version plugin** : **1.2.5** (`woocommerce-optic-product.php`, `composer.json`). Convention : toujours synchroniser `CHANGELOG.md` + `SESSION_HANDOFF.md` lors d’un changement de version.
 5. **`format_price_range_html()`** conservé en alias déprécié ; aucun appel interne ne produit plus de fourchette.
 6. Thème Flatsome **non présent** dans le workspace local au moment du dev — tests visuels à faire sur l’environnement WAMP réel.
 7. Couleurs du toggle Eyewa sont des **approximations** (#f4f4f5, #111827) — ajuster si charte Alwaleed différente.
 8. **Backorder + menu admin + Stock (2026-06-10/11)** : livré en **1.2.4** (`CHANGELOG.md`).
 9. **Backorder désactivé globalement** : champs Custom masqués en admin produit ; `get_child_backorder_qty()` retourne 0.
 10. **`backorder_consumed`** est conservé à la sauvegarde produit via `preserve_child_backorder_consumed()` — ne pas supprimer le hidden field admin.
+11. **Autoload** : ne plus reporter `WC_Optic_Autoload::register()` après `plugins_loaded` — l’activation (et tout code avant ce hook) en a besoin.
 
 ---
 
@@ -586,6 +609,10 @@ Domaine : `wc-optic` — traduction WPML via String Translation si actif.
 cd wp-content/plugins/Optic-Lenses
 
 # Vérifier syntaxe PHP
+php -l woocommerce-optic-product.php
+php -l includes/class-wc-optic-autoload.php
+php -l includes/class-wc-optic-divisions.php
+php -l includes/class-wc-optic-catalog.php
 php -l includes/class-wc-optic-sku.php
 php -l includes/class-wc-optic-cart.php
 php -l includes/class-wc-optic-pricing.php
@@ -627,7 +654,8 @@ php -l includes/admin/class-wc-optic-admin-settings.php
 | Child selector UI | **Supprimé** — sélection par puissances en cascade uniquement |
 | Mise à jour handoff | **À chaque prompt** significatif — mettre à jour `SESSION_HANDOFF.md` |
 | Règle Cursor | `.cursor/rules/session-handoff.mdc` (`alwaysApply: true`) — impose la mise à jour du handoff |
+| Autoload | Enregistré **immédiatement** (activation avant `plugins_loaded`) |
 
 ---
 
-*Dernière mise à jour : 2026-06-11 — version **1.2.4** (backorder, menu admin, page Stock, reset backorder, badge low stock).*
+*Dernière mise à jour : 2026-08-19 — version **1.2.5** (fix fatal WC_Optic_Catalog à l’activation).*
